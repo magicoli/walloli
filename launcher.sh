@@ -14,9 +14,22 @@ log() {
 }
 
 log "Activate virtual environment"
+# Détecter le système d'exploitation
+OS="$(uname -s)"
+case "$OS" in
+    Linux*)     OS=Linux;;
+    Darwin*)    OS=Mac;;
+    CYGWIN*|MINGW*|MSYS*) OS=Windows;;
+    *)          OS="UNKNOWN"
+esac
+
 # Créer un environnement virtuel s'il n'existe pas
 if [ ! -d "$venv_dir" ]; then
-    python3 -m venv "$venv_dir"
+    if [ "$OS" = "Mac" ]; then
+        python3 -m venv "$venv_dir" --system-site-packages
+    else
+        python3 -m venv "$venv_dir"
+    fi
 fi
 
 end() {
@@ -44,19 +57,9 @@ end() {
 # Activer l'environnement virtuel
 source "$venv_dir/bin/activate"
 
-# Détecter le système d'exploitation
-OS="$(uname -s)"
-case "$OS" in
-    Linux*)     OS=Linux;;
-    Darwin*)    OS=Mac;;
-    CYGWIN*|MINGW*|MSYS*) OS=Windows;;
-    *)          OS="UNKNOWN"
-esac
-
 # Vérifier les dépendances si elles n'ont pas été vérifiées depuis plus de 6 heures
 if [ ! -f "$timestamp_file" ] || [ $(find "$timestamp_file" -mmin +360) ]; then
     log "Check dependencies"
-
 
     # Vérifier si Tkinter est installé
     python -c "import tkinter" 2>/dev/null
@@ -91,4 +94,4 @@ fi
 
 log "Launch main script"
 # Exécuter le script Python
-echo "#" python "$basedir/videowall.py" "$@"
+python "$basedir/videowall.py" "$@"
