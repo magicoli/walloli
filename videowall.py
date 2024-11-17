@@ -73,17 +73,15 @@ def find_videos(directory, days=None):
 
     log("Running command: " + ' '.join(command))
     result = subprocess.run(command, capture_output=True, text=True)
-    log("Command output: " + result.stdout)
+    # log("Command output: " + result.stdout)
 
     files = result.stdout.splitlines()
 
-    # Utiliser grep pour filtrer les fichiers vidéo
+    # Utiliser grep pour filtrer les fichiers vidéo et exclure ceux dont le nom commence par un point
     video_extensions = re.compile(r'.*\.(avi|mp4|webm|m4v|mkv|wmv|mov|mpe?g)(\.part)?$', re.IGNORECASE)
-    videos = [file for file in files if video_extensions.match(file)]
+    videos = [file for file in files if video_extensions.match(os.path.basename(file)) and not os.path.basename(file).startswith('.')]
 
-    log("Videos:")
-    for video in videos:
-        print(video)
+    log("Found videos:\n" + "\n".join(videos))
 
     # Exit for now
     exit()
