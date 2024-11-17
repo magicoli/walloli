@@ -11,8 +11,9 @@ import time
 
 # Fonction de journalisation
 def log(message):
+    script_name = os.path.basename(__file__)
     if os.getenv('DEBUG') == 'true':
-        print(f"DEBUG: {message}")
+        print(f"{script_name}: {message}")
 
 class VideoWall:
     def __init__(self, root, video_paths, rows, cols):
