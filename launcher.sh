@@ -4,6 +4,8 @@ basedir=$(dirname "$0")
 venv_dir=$(realpath "$basedir/venv")
 timestamp_file="$venv_dir/.last_checked"
 PGM=$(basename "$0")
+venv_dir=venv
+
 # DEBUG=true
 
 log() {
@@ -20,15 +22,6 @@ case "$OS" in
     CYGWIN*|MINGW*|MSYS*) OS=Windows;;
     *)          OS="UNKNOWN"
 esac
-
-# Créer un environnement virtuel s'il n'existe pas
-if [ ! -d "$venv_dir" ]; then
-    if [ "$OS" = "Mac" ]; then
-        python3 -m venv "$venv_dir" # --system-site-packages
-    else
-        python3 -m venv "$venv_dir"
-    fi
-fi
 
 end() {
     DEBUG=true
@@ -53,17 +46,17 @@ end() {
     exit $exit_code
 }
 
+# Créer un environnement virtuel s'il n'existe pas
+if [ ! -d "$venv_dir" ]; then
+    if [ "$OS" = "Mac" ]; then
+        python3 -m venv "$venv_dir" --system-site-packages
+    else
+        python3 -m venv "$venv_dir"
+    fi
+fi
+
 # Activer l'environnement virtuel
-source "$venv_dir/bin/activate"
-
-# Vérifier si Tkinter est installé
-python -c "import tkinter" 2>/dev/null || end $? "Tkinter is required to run this script.
-
-- macos:    brew install python-tk
-- linux:    sudo apt-get update && sudo apt-get install python3-tk -y
-- windows:  idk&idc
-
-After installing it, delete the venv directory $venv_dir before running the script again"
+source "$venv_dir/bin/activate" || end $? "Failed to activate virtual environment in $venv_dir"
 
 # Vérifier les dépendances si elles n'ont pas été vérifiées depuis plus de 6 heures
 if [ ! -f "$timestamp_file" ] || [ $(find "$timestamp_file" -mmin +360) ]; then
@@ -76,6 +69,15 @@ if [ ! -f "$timestamp_file" ] || [ $(find "$timestamp_file" -mmin +360) ]; then
     && pip install pillow \
     && pip install argparse \
     || end $? "Failed to install $_"
+
+    # Vérifier si Tkinter est installé
+    python -c "import tkinter" 2>/dev/null || end $? "Tkinter is required to run this script.
+
+    - macos:    brew install python-tk
+    - linux:    sudo apt-get update && sudo apt-get install python3-tk -y
+    - windows:  idk&idc
+
+    After installing it, delete the venv directory $venv_dir before running the script again"
 
     touch "$timestamp_file"
 else
