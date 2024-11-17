@@ -1,5 +1,6 @@
 import os
 import subprocess
+import re
 import argparse
 import tkinter as tk
 from tkinter import ttk
@@ -8,6 +9,7 @@ from PIL import Image, ImageTk
 import psutil
 import time
 
+# Fonction de journalisation
 def log(message):
     if os.getenv('DEBUG') == 'true':
         print(f"DEBUG: {message}")
@@ -20,6 +22,7 @@ class VideoWall:
         self.cols = cols
         self.frames = []
         self.caps = [cv2.VideoCapture(video) for video in video_paths]
+        log(f"Initialized VideoWall with {len(video_paths)} videos, {rows} rows, {cols} cols")
         self.setup_ui()
         self.update_frames()
 
@@ -31,6 +34,7 @@ class VideoWall:
         self.root.bind("<F11>", self.toggle_fullscreen)
         self.root.bind("<Escape>", self.exit_fullscreen)
         self.fullscreen = False
+        log("UI setup complete")
 
     def update_frames(self):
         for i, cap in enumerate(self.caps):
@@ -45,37 +49,46 @@ class VideoWall:
                     x = (i % self.cols) * (self.root.winfo_width() // self.cols)
                     y = (i // self.cols) * (self.root.winfo_height() // self.rows)
                     self.frames.append(self.canvas.create_image(x, y, anchor=tk.NW, image=img))
-                self.root.after(30, self.update_frames)
+                log(f"Updated frame {i}")
+        self.root.after(30, self.update_frames)
 
     def toggle_fullscreen(self, event=None):
         self.fullscreen = not self.fullscreen
         self.root.attributes("-fullscreen", self.fullscreen)
+        log(f"Toggled fullscreen to {self.fullscreen}")
 
     def exit_fullscreen(self, event=None):
         self.fullscreen = False
         self.root.attributes("-fullscreen", False)
+        log("Exited fullscreen")
 
 def find_videos(directory, days=None):
     log("Finding videos in directory " + os.path.abspath(directory))
 
     directory = os.path.abspath(directory)
 
-    # regex = r'^[^\.].*\.\(avi|mp4|webm|m4v|mkv|wmv|mov|mpe?g\)\(.part\)?$'
-    regex = r'.*\.(mp4|avi|webm|m4v|mkv|wmv|mov|mpe?g)(\.part)?$'
-
     command = ['find', directory, '(', '-type', 'f', '-o', '-type', 'l', ')']
     if days:
-        # add [ 'mtime', f'-{days}' ] to command
-        command.extend([ '-mtime', f'-{days}' ])
+        command.extend(['-mtime', f'-{days}'])
 
     log("Running command: " + ' '.join(command))
     result = subprocess.run(command, capture_output=True, text=True)
     log("Command output: " + result.stdout)
-    
-    ## Exit for now, for debug purpose
-    exit(0)
 
-    return result.stdout.splitlines()
+    files = result.stdout.splitlines()
+
+    # Utiliser grep pour filtrer les fichiers vidéo
+    video_extensions = re.compile(r'.*\.(avi|mp4|webm|m4v|mkv|wmv|mov|mpe?g)(\.part)?$', re.IGNORECASE)
+    videos = [file for file in files if video_extensions.match(file)]
+
+    log("Videos:")
+    for video in videos:
+        print(video)
+
+    # Exit for now
+    exit()
+
+    return videos
 
 def main():
     parser = argparse.ArgumentParser(description="Video Wall")
