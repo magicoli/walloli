@@ -1,15 +1,13 @@
 #!/bin/bash
 
 basedir=$(dirname "$0")
-venv_dir="$basedir/venv"
+venv_dir=$(realpath "$basedir/venv")
 timestamp_file="$venv_dir/.last_checked"
 PGM=$(basename "$0")
-DEBUG=true
+# DEBUG=true
 
 log() {
-    if ! $DEBUG; then
-        return
-    fi
+    [ "$DEBUG" = "true" ] || return
     echo "$PGM: $*" >&2
 }
 
@@ -26,13 +24,14 @@ esac
 # Créer un environnement virtuel s'il n'existe pas
 if [ ! -d "$venv_dir" ]; then
     if [ "$OS" = "Mac" ]; then
-        python3 -m venv "$venv_dir" --system-site-packages
+        python3 -m venv "$venv_dir" # --system-site-packages
     else
         python3 -m venv "$venv_dir"
     fi
 fi
 
 end() {
+    DEBUG=true
     # if first parameter is a number, use it as exit code
     if [ "$1" -eq "$1" ] 2>/dev/null; then
         exit_code=$1
@@ -57,28 +56,19 @@ end() {
 # Activer l'environnement virtuel
 source "$venv_dir/bin/activate"
 
+# Vérifier si Tkinter est installé
+python -c "import tkinter" 2>/dev/null || end $? "Tkinter is required to run this script.
+
+- macos:    brew install python-tk
+- linux:    sudo apt-get update && sudo apt-get install python3-tk -y
+- windows:  idk&idc
+
+After installing it, delete the venv directory $venv_dir before running the script again"
+
 # Vérifier les dépendances si elles n'ont pas été vérifiées depuis plus de 6 heures
 if [ ! -f "$timestamp_file" ] || [ $(find "$timestamp_file" -mmin +360) ]; then
     log "Check dependencies"
-
-    # Vérifier si Tkinter est installé
-    python -c "import tkinter" 2>/dev/null
-    if [ $? -ne 0 ]; then
-        log "Tkinter not found, installing"
-        if [ "$OS" = "Mac" ]; then
-            brew install python-tk || end $? "Failed to install Tkinter"
-        elif [ "$OS" = "Linux" ]; then
-            sudo apt-get update && sudo apt-get install python3-tk -y || end $? "Failed to install Tkinter"
-        elif [ "$OS" = "Windows" ]; then
-            log "Please install Tkinter manually on Windows"
-            end 1 "Tkinter installation required"
-        else
-            end 1 "Unsupported OS"
-        fi
-    else
-        log "Tkinter is already installed"
-    fi
-
+    
     pip install --upgrade pip || end $? "Failed to upgrade pip"
 
     pip install opencv-python-headless \
