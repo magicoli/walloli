@@ -51,15 +51,15 @@ class VideoWall:
         screen_height = self.root.winfo_screenheight()
         log(f"Screen dimensions: {screen_width}x{screen_height}")
 
-        self.slot_width = screen_width // self.cols
+        self.slot_default_width = screen_width // self.cols
         self.slot_height = screen_height // self.rows
-        log(f"Slot dimensions: {self.slot_width}x{self.slot_height}")
+        log(f"Slot dimensions: {self.slot_default_width}x{self.slot_height}")
 
     def play_videos(self):
         for i, player in enumerate(self.players):
-            x = (i % self.cols) * self.slot_width
+            x = (i % self.cols) * self.slot_default_width
             y = (i // self.cols) * self.slot_height
-            player.set_size(self.slot_width, self.slot_height)
+            player.set_size(self.slot_default_width, self.slot_height)
             player.toggle_pause()
             log(f"Started playing video {i} at position ({x}, {y})")
         log("Started playing videos")
@@ -149,10 +149,9 @@ def init_windows_and_players(video_paths, screens, args):
     log("Initializing windows and players")
     #  (one per screen aka monitor aka display) and players (one or more players per window)")
 
-    log(f"Screens: {screens}")
+    log(f"Total screens: {screens}")
 
     videos_count = len(video_paths)
-    log(f"Total videos: {videos_count}")
 
     if args.singleloop:
         log(f"Single loop: {args.singleloop}")
@@ -206,21 +205,48 @@ def init_windows_and_players(video_paths, screens, args):
     log(f"Empty slots: {empty_slots}")
 
     players = []
+    slot_index = 0
+    ignore_slots = set()  # Table to note the blocks to ignore
+
     for screen in screens:
         res, x, y = screen
         log("Screen resolution " + res + " at position " + str((x, y)))
         width, height = map(int, res.split('x'))
         rows, cols = slots_grid
         log(f"  Rows: {rows}, Cols: {cols}")
-        slot_width = width // cols
-        slot_height = height // rows
-        log(f"  Slots dimensions: {slot_width}x{slot_height}")
+        slot_default_width = width // cols
+        slot_default_height = height // rows
+        log(f"  Slots dimensions: {slot_default_width}x{slot_default_height}")
 
-        # for i in range(players_per_screen):
-        #     player = MediaPlayer(video_paths[i % len(video_paths)])
-        #     player.set_size(slot_width, slot_height)
-        #     players.append(player)
-        #     log(f"Initialized player for video {i % len(video_paths)} at screen {screen} with size {slot_width}x{slot_height}")
+        for row in range(rows):
+            for col in range(cols):
+                if (row, col) in ignore_slots:
+                    continue
+
+                slot_index += 1
+                slot_x = x + col * slot_default_width
+                slot_y = y + row * slot_default_height
+                current_slot_height = slot_default_height
+                current_slot_width = slot_default_width
+
+                if empty_slots >= 1 and row < rows - 1:
+                    # Check if there is a slot below
+                    ignore_slots.add((row + 1, col))
+                    current_slot_height *= 2
+                    empty_slots -= 1
+                    if empty_slots >= 2 and col < cols - 1:
+                        ignore_slots.add((row, col + 1))
+                        ignore_slots.add((row + 1, col + 1))
+                        current_slot_width *= 2
+                        empty_slots -= 2
+
+                log(f"  Slot {slot_index} {current_slot_width}x{current_slot_height} at ({slot_x}, {slot_y})")
+
+                # DO NOT UNCOMMENT PLAYER INITIALIZATION, we do'nt give a shit until the slots are properly defined
+                # player = MediaPlayer(video_paths[slot_index % len(video_paths)])
+                # player.set_size(slot_default_width, slot_height)
+                # players.append(player)
+                # log(f"Initialized player for video {slot_index % len(video_paths)} at screen {screen} with size {slot_default_width}x{slot_height}")
 
     exit() # DEBUG
     log("players: " + str(players))
