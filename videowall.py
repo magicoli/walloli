@@ -141,7 +141,6 @@ def get_screens(screen_number=None):
         else:
             log(f"Invalid screen number: {screen_number}")
             exit(1)  # Exit with error if the screen number is invalid
-    log("Screens: " + str(screens))
 
     return screens
 
@@ -207,7 +206,7 @@ def get_slots(video_paths, screens, args):
     slots = []
     slot_index = 0
     ignore_slots = set()  # Table to note the blocks to ignore
-
+    screen_index = 0
     for screen in screens:
         res, x, y = screen
         log("Screen resolution " + res + " at position " + str((x, y)))
@@ -239,7 +238,7 @@ def get_slots(video_paths, screens, args):
                         current_slot_width *= 2
                         empty_slots -= 2
                 
-                slots.append((slot_x, slot_y, current_slot_width, current_slot_height))
+                slots.append((screen_index, slot_x, slot_y, current_slot_width, current_slot_height))
                 
                 log(f"  Slot {slot_index} {current_slot_width}x{current_slot_height} at ({slot_x}, {slot_y})")
 
@@ -248,10 +247,45 @@ def get_slots(video_paths, screens, args):
                 # player.set_size(slot_default_width, slot_height)
                 # players.append(player)
                 # log(f"Initialized player for video {slot_index % len(video_paths)} at screen {screen} with size {slot_default_width}x{slot_height}")
+        screen_index +=1
 
-    log("slots: " + str(slots))
-    exit() # DEBUG
     return slots
+
+def toggle_fullscreen(event, window):
+    window.attributes("-fullscreen", not window.attributes("-fullscreen"))
+
+def exit_fullscreen(event, window):
+    window.attributes("-fullscreen", False)
+
+def create_windows_and_players(screens, slots, video_paths):
+    windows = []
+    for screen_index, screen in enumerate(screens):
+        # Créer une fenêtre pour chaque écran
+        window = tk.Tk()
+        res, x, y = screen
+        width, height = map(int, res.split('x'))
+        window.geometry(f"{width}x{height}+{x}+{y}")
+        window.attributes("-fullscreen", True)  # Ouvrir en plein écran par défaut
+        windows.append(window)
+
+        # Assigner les touches pour quitter et réactiver le plein écran
+        window.bind("<Escape>", lambda event, win=window: exit_fullscreen(event, win))
+        if os.name == 'posix' and 'darwin' in os.uname().sysname.lower():
+            window.bind("<Command-f>", lambda event, win=window: toggle_fullscreen(event, win))
+        else:
+            window.bind("<F11>", lambda event, win=window: toggle_fullscreen(event, win))
+
+        # Positionner les players dans chaque slot correspondant à cet écran
+        for slot in slots:
+            slot_screen_index, slot_x, slot_y, slot_width, slot_height = slot
+            if slot_screen_index == screen_index:
+                player_frame = tk.Frame(window, width=slot_width, height=slot_height)
+                player_frame.place(x=slot_x - x, y=slot_y - y)
+                player = MediaPlayer(video_paths[slot_screen_index % len(video_paths)])
+                player.set_size(slot_width, slot_height)
+                player.toggle_pause()
+
+    return windows
 
 def main():
     global verbose
@@ -292,6 +326,16 @@ def main():
     screens = get_screens(args.screen)
 
     slots = get_slots(video_paths, screens, args)
+
+    windows = create_windows_and_players(screens, slots, video_paths)
+
+    log("Screens: " + str(screens))
+    log("slots: " + str(slots))
+    log("Windows: " + str(windows))
+
+    # Lancer la boucle principale de Tkinter
+    for window in windows:
+        window.mainloop()
 
     # root = tk.Tk()
     # player = VideoWall(root, video_paths, 2, 2, screens)
