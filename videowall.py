@@ -4,8 +4,7 @@ import re
 import argparse
 import tkinter as tk
 from tkinter import ttk
-import cv2
-from PIL import Image, ImageTk
+from ffpyplayer.player import MediaPlayer
 import psutil
 import time
 
@@ -21,37 +20,39 @@ class VideoWall:
         self.video_paths = video_paths
         self.rows = rows
         self.cols = cols
-        self.frames = []
-        self.caps = [cv2.VideoCapture(video) for video in video_paths]
+        self.players = [MediaPlayer(video) for video in video_paths]
         log(f"Initialized VideoWall with {len(video_paths)} videos, {rows} rows, {cols} cols")
         self.setup_ui()
-        self.update_frames()
+        self.play_videos()
 
     def setup_ui(self):
         self.root.title("Video Wall")
         self.root.geometry("800x600")
         self.canvas = tk.Canvas(self.root)
         self.canvas.pack(fill=tk.BOTH, expand=True)
-        self.root.bind("<F11>", self.toggle_fullscreen)
         self.root.bind("<Escape>", self.exit_fullscreen)
         self.fullscreen = False
+
+        # Détecter le système d'exploitation
+        if os.name == 'posix' and 'darwin' in os.uname().sysname.lower():
+            # macOS
+            self.root.bind("<Command-f>", self.enter_fullscreen)
+        else:
+            # Autres systèmes d'exploitation
+            self.root.bind("<F11>", self.toggle_fullscreen)
+
         log("UI setup complete")
 
-    def update_frames(self):
-        for i, cap in enumerate(self.caps):
-            ret, frame = cap.read()
-            if ret:
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                img = Image.fromarray(frame)
-                img = ImageTk.PhotoImage(img)
-                if len(self.frames) > i:
-                    self.canvas.itemconfig(self.frames[i], image=img)
-                else:
-                    x = (i % self.cols) * (self.root.winfo_width() // self.cols)
-                    y = (i // self.cols) * (self.root.winfo_height() // self.rows)
-                    self.frames.append(self.canvas.create_image(x, y, anchor=tk.NW, image=img))
-                log(f"Updated frame {i}")
-        self.root.after(30, self.update_frames)
+    def play_videos(self):
+        for player in self.players:
+            player.set_size(self.root.winfo_width(), self.root.winfo_height())
+            player.toggle_pause()
+        log("Started playing videos")
+
+    def enter_fullscreen(self, event=None):
+        self.fullscreen = True
+        self.root.attributes("-fullscreen", self.fullscreen)
+        log("Entered fullscreen")
 
     def toggle_fullscreen(self, event=None):
         self.fullscreen = not self.fullscreen

@@ -68,6 +68,7 @@ if [ ! -f "$timestamp_file" ] || [ $(find "$timestamp_file" -mmin +360) ]; then
     && pip install psutil \
     && pip install pillow \
     && pip install argparse \
+    && pip install ffpyplayer \
     || end $? "Failed to install $_"
 
     # Vérifier si Tkinter est installé
