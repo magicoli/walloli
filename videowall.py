@@ -11,8 +11,8 @@ import time
 
 # Fonction de journalisation
 def log(message):
-    script_name = os.path.basename(__file__)
-    if os.getenv('DEBUG') == 'true':
+    if verbose:
+        script_name = os.path.basename(__file__)
         print(f"{script_name}: {message}")
 
 class VideoWall:
@@ -84,12 +84,12 @@ def find_videos(directory, days=None):
 
     log("Found videos:\n" + "\n".join(videos))
 
-    # Exit for now
-    exit()
-
     return videos
 
 def main():
+    global verbose
+    verbose = False
+
     parser = argparse.ArgumentParser(description="Video Wall")
     parser.add_argument('-d', '--days', type=int, help='Number of days to look back for videos')
     parser.add_argument('-m', '--max', type=int, help='Maximum number of videos to play')
@@ -103,8 +103,9 @@ def main():
     parser.add_argument('directories', nargs='+', help='Directories to search for videos')
     args = parser.parse_args()
 
-    if args.verbose:
-        print("Verbose mode enabled")
+    if os.getenv('DEBUG') == 'true' or args.verbose:
+        # set global variable verbose to true
+        verbose = True
 
     video_paths = []
     for directory in args.directories:
