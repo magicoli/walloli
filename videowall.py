@@ -8,6 +8,7 @@ from ffpyplayer.player import MediaPlayer
 import psutil
 import time
 from math import ceil, sqrt
+import random
 
 # Fonction de journalisation
 def log(message):
@@ -280,11 +281,19 @@ def create_windows_and_players(screens, slots, video_paths):
         for slot in slots:
             slot_screen_index, slot_x, slot_y, slot_width, slot_height = slot
             if slot_screen_index == screen_index:
-                player_frame = tk.Frame(window, width=slot_width, height=slot_height)
+                player_frame = tk.Frame(window, width=slot_width, height=slot_height, bd=2, relief="solid")
                 player_frame.place(x=slot_x - x, y=slot_y - y)
-                player = MediaPlayer(video_paths[slot_screen_index % len(video_paths)])
+
+                # Mélanger les vidéos pour chaque player
+                playlist = video_paths[:]
+                random.shuffle(playlist)
+
+                # Créer un player pour chaque slot avec des options supplémentaires
+                player = MediaPlayer(playlist[0], ff_opts={'analyzeduration': '5000000', 'probesize': '5000000'})
                 player.set_size(slot_width, slot_height)
                 player.toggle_pause()
+
+                # TODO: Ajouter la gestion de la playlist pour chaque player
 
     return windows
 
@@ -315,32 +324,22 @@ def main():
     for directory in args.directories:
         video_paths.extend(find_videos(directory, args.days))
 
-    # Wrong to do this that early, the list will be truncated later, after deciding the ordering
-    # if args.max:
-    #     video_paths = video_paths[:args.max]
-    # total_videos = args.max if args.max else len(video_paths)
-
     if not video_paths:
         print("No videos found")
         return
 
     screens = get_screens(args.screen)
+    log("Screens: " + str(screens))
 
     slots = get_slots(video_paths, screens, args)
+    log("slots: " + str(slots))
 
     windows = create_windows_and_players(screens, slots, video_paths)
-
-    log("Screens: " + str(screens))
-    log("slots: " + str(slots))
     log("Windows: " + str(windows))
 
     # Lancer la boucle principale de Tkinter
     for window in windows:
         window.mainloop()
-
-    # root = tk.Tk()
-    # player = VideoWall(root, video_paths, 2, 2, screens)
-    # root.mainloop()
 
 if __name__ == "__main__":
     main()
