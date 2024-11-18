@@ -262,6 +262,7 @@ def create_windows_and_players(screens, slots, video_paths):
     for screen_index, screen in enumerate(screens):
         # Créer une fenêtre pour chaque écran
         window = tk.Tk()
+        window.title("Videowall")  # Définir le titre de la fenêtre
         res, x, y = screen
         width, height = map(int, res.split('x'))
         window.geometry(f"{width}x{height}+{x}+{y}")
