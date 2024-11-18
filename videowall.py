@@ -4,7 +4,8 @@ import re
 import argparse
 import tkinter as tk
 from tkinter import ttk
-from ffpyplayer.player import MediaPlayer
+import cv2
+from PIL import Image, ImageTk
 import psutil
 import time
 from math import ceil, sqrt
@@ -16,69 +17,32 @@ def log(message):
         script_name = os.path.basename(__file__)
         print(f"{script_name}: {message}")
 
-class VideoWall:
-    def __init__(self, root, video_paths, rows, cols, screen_info):
+class VideoPlayer:
+    def __init__(self, root, video_path, x, y, width, height):
         self.root = root
-        self.video_paths = video_paths
-        self.rows = rows
-        self.cols = cols
-        self.screen_info = screen_info
-        self.players = [MediaPlayer(video) for video in video_paths]
-        log(f"Initialized VideoWall with {len(video_paths)} videos, {rows} rows, {cols} cols")
-        self.setup_ui()
-        self.calculate_layout()
-        self.play_videos()
+        self.video_path = video_path
+        self.cap = cv2.VideoCapture(video_path)
+        self.canvas = tk.Canvas(root, width=width, height=height)
+        self.canvas.place(x=x, y=y)
+        self.frame_image = None
+        self.update_frame()
 
-    def setup_ui(self):
-        self.root.title("Video Wall")
-        self.root.geometry("800x600")
-        self.canvas = tk.Canvas(self.root)
-        self.canvas.pack(fill=tk.BOTH, expand=True)
-        self.root.bind("<Escape>", self.exit_fullscreen)
-        self.fullscreen = False
-
-        # Détecter le système d'exploitation
-        if os.name == 'posix' and 'darwin' in os.uname().sysname.lower():
-            # macOS
-            self.root.bind("<Command-f>", self.enter_fullscreen)
+    def update_frame(self):
+        ret, frame = self.cap.read()
+        if ret:
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            img = Image.fromarray(frame)
+            self.frame_image = ImageTk.PhotoImage(img)
+            self.canvas.create_image(0, 0, anchor=tk.NW, image=self.frame_image)
         else:
-            # Autres systèmes d'exploitation
-            self.root.bind("<F11>", self.toggle_fullscreen)
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Rewind the video
+        self.root.after(10, self.update_frame)
 
-        log("UI setup complete")
+def toggle_fullscreen(event, window):
+    window.attributes("-fullscreen", not window.attributes("-fullscreen"))
 
-    def calculate_layout(self):
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
-        log(f"Screen dimensions: {screen_width}x{screen_height}")
-
-        self.slot_default_width = screen_width // self.cols
-        self.slot_height = screen_height // self.rows
-        log(f"Slot dimensions: {self.slot_default_width}x{self.slot_height}")
-
-    def play_videos(self):
-        for i, player in enumerate(self.players):
-            x = (i % self.cols) * self.slot_default_width
-            y = (i // self.cols) * self.slot_height
-            player.set_size(self.slot_default_width, self.slot_height)
-            player.toggle_pause()
-            log(f"Started playing video {i} at position ({x}, {y})")
-        log("Started playing videos")
-
-    def toggle_fullscreen(self, event=None):
-        self.fullscreen = not self.fullscreen
-        self.root.attributes("-fullscreen", self.fullscreen)
-        log(f"Toggled fullscreen to {self.fullscreen}")
-
-    def enter_fullscreen(self, event=None):
-        self.fullscreen = True
-        self.root.attributes("-fullscreen", self.fullscreen)
-        log("Entered fullscreen")
-
-    def exit_fullscreen(self, event=None):
-        self.fullscreen = False
-        self.root.attributes("-fullscreen", False)
-        log("Exited fullscreen")
+def exit_fullscreen(event, window):
+    window.attributes("-fullscreen", False)
 
 def find_videos(directory, days=None):
     log("Finding videos in directory " + os.path.abspath(directory))
@@ -252,12 +216,6 @@ def get_slots(video_paths, screens, args):
 
     return slots
 
-def toggle_fullscreen(event, window):
-    window.attributes("-fullscreen", not window.attributes("-fullscreen"))
-
-def exit_fullscreen(event, window):
-    window.attributes("-fullscreen", False)
-
 def create_windows_and_players(screens, slots, video_paths):
     windows = []
     for screen_index, screen in enumerate(screens):
@@ -281,19 +239,12 @@ def create_windows_and_players(screens, slots, video_paths):
         for slot in slots:
             slot_screen_index, slot_x, slot_y, slot_width, slot_height = slot
             if slot_screen_index == screen_index:
-                player_frame = tk.Frame(window, width=slot_width, height=slot_height, bd=2, relief="solid")
-                player_frame.place(x=slot_x - x, y=slot_y - y)
-
                 # Mélanger les vidéos pour chaque player
                 playlist = video_paths[:]
                 random.shuffle(playlist)
 
-                # Créer un player pour chaque slot avec des options supplémentaires
-                player = MediaPlayer(playlist[0], ff_opts={'analyzeduration': '5000000', 'probesize': '5000000'})
-                player.set_size(slot_width, slot_height)
-                player.toggle_pause()
-
-                # TODO: Ajouter la gestion de la playlist pour chaque player
+                # Créer un player pour chaque slot
+                VideoPlayer(window, playlist[0], slot_x - x, slot_y - y, slot_width, slot_height)
 
     return windows
 
