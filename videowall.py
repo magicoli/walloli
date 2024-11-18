@@ -145,7 +145,7 @@ def get_screens(screen_number=None):
 
     return screens
 
-def init_windows_and_players(video_paths, screens, args):
+def get_slots(video_paths, screens, args):
     log("Initializing windows and players")
     #  (one per screen aka monitor aka display) and players (one or more players per window)")
 
@@ -204,7 +204,7 @@ def init_windows_and_players(video_paths, screens, args):
     empty_slots = total_slots - min_players
     log(f"Empty slots: {empty_slots}")
 
-    players = []
+    slots = []
     slot_index = 0
     ignore_slots = set()  # Table to note the blocks to ignore
 
@@ -223,7 +223,6 @@ def init_windows_and_players(video_paths, screens, args):
                 if (row, col) in ignore_slots:
                     continue
 
-                slot_index += 1
                 slot_x = x + col * slot_default_width
                 slot_y = y + row * slot_default_height
                 current_slot_height = slot_default_height
@@ -239,7 +238,9 @@ def init_windows_and_players(video_paths, screens, args):
                         ignore_slots.add((row + 1, col + 1))
                         current_slot_width *= 2
                         empty_slots -= 2
-
+                
+                slots.append((slot_x, slot_y, current_slot_width, current_slot_height))
+                
                 log(f"  Slot {slot_index} {current_slot_width}x{current_slot_height} at ({slot_x}, {slot_y})")
 
                 # DO NOT UNCOMMENT PLAYER INITIALIZATION, we do'nt give a shit until the slots are properly defined
@@ -248,9 +249,9 @@ def init_windows_and_players(video_paths, screens, args):
                 # players.append(player)
                 # log(f"Initialized player for video {slot_index % len(video_paths)} at screen {screen} with size {slot_default_width}x{slot_height}")
 
+    log("slots: " + str(slots))
     exit() # DEBUG
-    log("players: " + str(players))
-    return players
+    return slots
 
 def main():
     global verbose
@@ -290,7 +291,7 @@ def main():
 
     screens = get_screens(args.screen)
 
-    players = init_windows_and_players(video_paths, screens, args)
+    slots = get_slots(video_paths, screens, args)
 
     # root = tk.Tk()
     # player = VideoWall(root, video_paths, 2, 2, screens)
