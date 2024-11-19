@@ -67,7 +67,7 @@ if not vlc_lib_path:
 
 # Maintenant que VLC est vérifié, importer le module vlc
 import vlc
-from PyQt5 import QtWidgets, QtCore
+from PyQt5 import QtWidgets, QtCore, QtGui
 
 class VideoPlayer(QtWidgets.QFrame):
     def __init__(self, video_path, parent=None, width=300, height=200):
@@ -107,11 +107,54 @@ class VideoPlayer(QtWidgets.QFrame):
         self.player.set_media(media)
         self.player.play()
 
+class MainWindow(QtWidgets.QWidget):
+    def __init__(self, *args, **kwargs):
+        super(MainWindow, self).__init__(*args, **kwargs)
+        self.setFocusPolicy(QtCore.Qt.StrongFocus)
+
+        # Définir les raccourcis clavier
+        if sys.platform == 'darwin':
+            # macOS
+            toggle_fs_seq = QtGui.QKeySequence("Meta+F")
+            toggle_fs = QtWidgets.QShortcut(toggle_fs_seq, self)
+            toggle_fs.activated.connect(self.toggle_fullscreen)
+
+            close_seq = QtGui.QKeySequence("Meta+W")
+            close_shortcut = QtWidgets.QShortcut(close_seq, self)
+            close_shortcut.activated.connect(self.close)
+        else:
+            # Windows/Linux
+            toggle_fs_seq1 = QtGui.QKeySequence("F11")
+            toggle_fs1 = QtWidgets.QShortcut(toggle_fs_seq1, self)
+            toggle_fs1.activated.connect(self.toggle_fullscreen)
+
+            toggle_fs_seq2 = QtGui.QKeySequence("Ctrl+F")
+            toggle_fs2 = QtWidgets.QShortcut(toggle_fs_seq2, self)
+            toggle_fs2.activated.connect(self.toggle_fullscreen)
+
+            exit_fs_seq = QtGui.QKeySequence("Escape")
+            exit_fs = QtWidgets.QShortcut(exit_fs_seq, self)
+            exit_fs.activated.connect(self.exit_fullscreen)
+
+            close_seq = QtGui.QKeySequence("Ctrl+W")
+            close_shortcut = QtWidgets.QShortcut(close_seq, self)
+            close_shortcut.activated.connect(self.close)
+
+    def toggle_fullscreen(self):
+        if self.isFullScreen():
+            self.showNormal()
+        else:
+            self.showFullScreen()
+
+    def exit_fullscreen(self):
+        if self.isFullScreen():
+            self.showNormal()
+
 def create_windows_and_players(screens, slots, video_paths):
     windows = []
     for screen_index, screen in enumerate(screens):
-        # Créer une fenêtre pour chaque écran
-        window = QtWidgets.QWidget()
+        # Créer une fenêtre personnalisée pour chaque écran
+        window = MainWindow()
         window.setWindowTitle("Videowall")  # Définir le titre de la fenêtre
         res, x, y = screen
         width, height = map(int, res.split('x'))
@@ -135,7 +178,7 @@ def create_windows_and_players(screens, slots, video_paths):
 
             # Créer un player pour chaque slot avec taille dynamique
             player = VideoPlayer(video_path, window, slot_width, slot_height)
-            player.setGeometry(relative_x, relative_y, slot_width, slot_height)  # Correction de l'ordre
+            player.setGeometry(relative_x, relative_y, slot_width, slot_height)  # Positionnement correct
             player.show()
 
     return windows
@@ -309,12 +352,6 @@ def get_slots(video_paths, screens, args):
 
                 log(f"  Slot {slot_index} {current_slot_width}x{current_slot_height} at ({slot_x}, {slot_y})")
                 slot_index += 1
-
-                # DO NOT UNCOMMENT PLAYER INITIALIZATION, we do'nt give a shit until the slots are properly defined
-                # player = MediaPlayer(video_paths[slot_index % len(video_paths)])
-                # player.set_size(slot_default_width, slot_height)
-                # players.append(player)
-                # log(f"Initialized player for video {slot_index % len(video_paths)} at screen {screen} with size {slot_default_width}x{slot_height}")
         screen_index +=1
 
     return slots
