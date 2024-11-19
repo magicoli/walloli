@@ -21,30 +21,37 @@ def log(message, arg2=None, arg3=None):
 
 class PlayerWall:
     def __init__(self, parent, video_path, x, y, width, height):
-        self.parent = parent  # Plus précis que 'root'
-        self.video_path = video_path
-        self.width = width
-        self.height = height
+        # Configuration spécifique macOS
+        # if os.name == 'posix' and 'darwin' in os.uname().sysname.lower():
+        #     os.environ["MPV_RENDER_API_TYPE"] = "sw"
+        #     os.environ["MPV_MACOS_FORCE_DEDICATED_GPU"] = "1"
+        #     os.environ["MPV_NO_WINDOW"] = "1"  # Tenter de forcer le mode sans fenêtre
         
-        # Frame conteneur avec gestion stricte de la géométrie
-        self.container = tk.Frame(parent, width=width, height=height, bg='black')
+        debug_colors = ['red', 'green', 'blue', 'yellow', 'purple', 'orange', 'pink', 'cyan']
+        random_color = random.choice(debug_colors)
+        
+        self.container = tk.Frame(parent, width=width, height=height, bg=random_color)  # Couleur aléatoire
         self.container.place(x=x, y=y)
+        self.container.pack_propagate(False)
         self.container.update()
         
-        log("self.container.winfo_id(): " + str(self.container.winfo_id()))
-
-        # Configuration MPV minimale pour mode embarqué
+        # Configuration MPV pour macOS
         self.player = MPV(
-            wid=str(self.container.winfo_id()),  # Utiliser le container et non la fenêtre root
-            # vo='gpu',
+            wid=str(self.container.winfo_id()),
             hwdec='auto',
-            input_vo_keyboard=True,  # Ne pas désactiver les contrôles clavier, c'est important
-            osc=True,  # Ne pas désactiver l'interface utilisateur, c'est important
-            fullscreen=False
+            input_vo_keyboard=True,
+            osc=True,
+            # fullscreen=False,
+            # force_window=False,  # Important : désactiver la création de fenêtre
+            vo='libmpv'  # Tester le backend libmpv sur macOS
         )
         
         # Démarrer la lecture
         self.player.play(video_path)
+        
+        # # Attendre que le container soit prêt et re-forcer la géométrie
+        # self.container.update_idletasks()
+        # self.player.fullscreen = False
 
 def toggle_fullscreen(event, window):
     window.attributes("-fullscreen", not window.attributes("-fullscreen"))
