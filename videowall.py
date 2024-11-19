@@ -321,11 +321,10 @@ def get_slots(video_paths, screens, args):
         args.max = args.number if args.number else min_players
 
     log(f"Min players: {min_players}")
-    # Calculate actual best fit for slots. Divide each screen in slots by x,y
+    
+    # Calculate actual best fit for slots. Divide each screen into slots by x,y
     min_slots_per_screen = ceil(min_players / len(screens))
-    # log(f"Min slots per screen: {min_slots_per_screen}")
     optimized_slots_per_screen = ceil(sqrt(min_slots_per_screen)) ** 2
-    # log(f"Optimized slots per screen: {optimized_slots_per_screen}")
 
     best_fit = None
     if args.bestfit:
@@ -336,27 +335,23 @@ def get_slots(video_paths, screens, args):
             if diff < min_diff:
                 min_diff = diff
                 best_fit = (rows, cols)
-        # log(f"Best fit: {best_fit}")
         slots_grid = best_fit
     else:
         slots_per_side = ceil(sqrt(optimized_slots_per_screen))
         slots_grid = (slots_per_side, slots_per_side)
-    # log(f"Slots grid: {slots_grid}")
-
+    
     slots_per_screen = slots_grid[0] * slots_grid[1]
     log(f"Slots per screen: {slots_per_screen}")
 
     total_slots = slots_per_screen * len(screens)
     log(f"Total slots: {total_slots}")
 
-    empty_slots = total_slots - min_players
-    log(f"Empty slots: {empty_slots}")
-
     slots = []
     slot_index = 0
     screen_index = 0
+
     for screen in screens:
-        ignore_slots = set()  # Table to note the blocks to ignore
+        ignore_slots = set()  # Initialiser pour chaque écran
         res, x, y = screen
         log("Screen resolution " + res + " at position " + str((x, y)))
         width, height = map(int, res.split('x'))
@@ -366,11 +361,19 @@ def get_slots(video_paths, screens, args):
         slot_default_height = height // rows
         log(f"  Slots dimensions: {slot_default_width}x{slot_default_height}")
 
+        # Calculer les empty_slots pour cet écran
+        if args.number:
+            empty_slots_screen = slots_per_screen - args.number
+        else:
+            empty_slots_screen = slots_per_screen - 1  # Par défaut 1 slot par écran
+
+        log(f"  Empty slots for this screen: {empty_slots_screen}")
+
         for row in range(rows):
             for col in range(cols):
-                log("Checkng slot " + str((row, col)))
+                log("Checking slot " + str((row, col)))
                 if (row, col) in ignore_slots:
-                    log("slot " +  str((row, col)) + " is in ignore list, skipping")
+                    log("slot " + str((row, col)) + " is in ignore list, skipping")
                     continue
 
                 slot_x = x + col * slot_default_width
@@ -378,18 +381,19 @@ def get_slots(video_paths, screens, args):
                 current_slot_height = slot_default_height
                 current_slot_width = slot_default_width
 
-                new_ignores = set()
-                if empty_slots >= 1 and row < rows - 1:
-                    # Check if there is a slot below
+                if empty_slots_screen >= 1 and row < rows - 1:
+                    log(f"slot {row},{col}: {empty_slots_screen} empty slots left and a slot is available below")
                     ignore_slots.add((row + 1, col))
                     current_slot_height *= 2
-                    empty_slots -= 1
-                    if empty_slots >= 2 and col < cols - 1:
+                    empty_slots_screen -= 1
+                    if empty_slots_screen >= 2 and col < cols - 1:
+                        log(f"{empty_slots_screen} empty slots left and two slots are available aside")
                         ignore_slots.add((row, col + 1))
                         ignore_slots.add((row + 1, col + 1))
                         current_slot_width *= 2
-                        empty_slots -= 2
-                
+                        empty_slots_screen -= 2
+
+                # Assigner le slot
                 slots.append((screen_index, slot_x, slot_y, current_slot_width, current_slot_height))
 
                 log(f"  Slot {slot_index} {current_slot_width}x{current_slot_height} at ({slot_x}, {slot_y})")
@@ -399,7 +403,6 @@ def get_slots(video_paths, screens, args):
     log("Slots: " + str(slots))
     # exit(0) # DEBUG
     return slots
-
 def main():
     global verbose
     verbose = False
