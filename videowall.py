@@ -158,18 +158,8 @@ class MainWindow(QtWidgets.QWidget):
         if sys.platform != 'darwin':
             # Windows/Linux
             toggle_fs_seq2 = QtGui.QKeySequence("F11")
-            toggle_fs2 = QtWidgets.QShortcut(toggle_fs_seq1, self)
+            toggle_fs2 = QtWidgets.QShortcut(toggle_fs_seq2, self)
             toggle_fs2.activated.connect(self.toggle_fullscreen)
-
-    def create_menu(self):
-        # Créer un menu "View"
-        menubar = self.menuBar()
-        view_menu = menubar.addMenu("View")
-        view_menu.addAction(self.toggle_fullscreen_action)
-        if not sys.platform == 'darwin':
-            view_menu.addAction(self.toggle_fullscreen_alt_action)
-            view_menu.addAction(self.exit_fullscreen_action)
-        view_menu.addAction(self.close_action)
 
     def toggle_fullscreen(self):
         if self.isFullScreen():
@@ -221,12 +211,6 @@ def create_windows_and_players(screens, slots, video_paths):
             slot_index += 1
 
     return windows
-
-def toggle_fullscreen(event, window):
-    window.attributes("-fullscreen", not window.attributes("-fullscreen"))
-
-def exit_fullscreen(event, window):
-    window.attributes("-fullscreen", False)
 
 def find_videos(directory, days=None):
     log("Finding videos in directory " + os.path.abspath(directory))
@@ -305,6 +289,9 @@ def get_slots(video_paths, screens, args):
         log(f"Single loop: {args.singleloop}")
         # single loop shows a player for each video in the list
         min_players = len(video_paths)
+    elif args.total_number:
+        log(f"Requested total number of players: {args.total_number}")
+        min_players = args.total_number
     elif args.number:
         log(f"Requested videos per screen: {args.number}")
         min_players = len(screens) * args.number
@@ -350,6 +337,14 @@ def get_slots(video_paths, screens, args):
     slot_index = 0
     screen_index = 0
 
+    empty_slots = 0
+    if args.total_number is not None:
+        empty_slots = total_slots - args.total_number
+        log(f"Total number of players requested: {args.total_number}, empty slots: {empty_slots}")
+    else:
+        log(f"No total number of players requested, empty slots: {empty_slots}")
+        empty_slots = total_slots - min_players
+
     for screen in screens:
         ignore_slots = set()  # Initialiser pour chaque écran
         res, x, y = screen
@@ -362,10 +357,12 @@ def get_slots(video_paths, screens, args):
         log(f"  Slots dimensions: {slot_default_width}x{slot_default_height}")
 
         # Calculer les empty_slots pour cet écran
-        if args.number:
+        if args.total_number:
+            empty_slots_screen = empty_slots
+        elif args.number: # if number is set, manage per screen to distribute evenly
             empty_slots_screen = slots_per_screen - args.number
         else:
-            empty_slots_screen = slots_per_screen - 1  # Par défaut 1 slot par écran
+            empty_slots_screen = 0 # dunno why it was = slots_per_screen - 1  # Par défaut 1 slot par écran
 
         log(f"  Empty slots for this screen: {empty_slots_screen}")
 
@@ -386,12 +383,14 @@ def get_slots(video_paths, screens, args):
                     ignore_slots.add((row + 1, col))
                     current_slot_height *= 2
                     empty_slots_screen -= 1
+                    empty_slots -= 1
                     if empty_slots_screen >= 2 and col < cols - 1:
                         log(f"{empty_slots_screen} empty slots left and two slots are available aside")
                         ignore_slots.add((row, col + 1))
                         ignore_slots.add((row + 1, col + 1))
                         current_slot_width *= 2
                         empty_slots_screen -= 2
+                        empty_slots -= 2
 
                 # Assigner le slot
                 slots.append((screen_index, slot_x, slot_y, current_slot_width, current_slot_height))
@@ -411,7 +410,8 @@ def main():
     app = QtWidgets.QApplication(sys.argv)
 
     parser = argparse.ArgumentParser(description="Video Wall")
-    parser.add_argument('-n', '--number', type=int, default=1, help='Number of players to display')
+    parser.add_argument('-n', '--number', type=int, default=1, help='Number of players per screen')
+    parser.add_argument('-N', '--total-number', type=int, default=None, help='Total number of players per screen, preceeds -n')
     parser.add_argument('-d', '--days', type=int, help='Number of days to look back for videos')
     parser.add_argument('-m', '--max', type=int, help='Maximum number of videos to play')
     parser.add_argument('-p', '--panscan', type=float, default=0, help='Panscan value')
