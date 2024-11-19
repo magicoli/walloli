@@ -8,50 +8,60 @@ from math import ceil, sqrt
 import random
 
 # Fonction de journalisation
-def log(message):
+def log(message, arg2=None, arg3=None):
     if verbose:
         script_name = os.path.basename(__file__)
+        # remove trailer return in arg3
+        if arg3:
+            arg3 = arg3.rstrip()
+        # add arg2 and arg3 if they are not None
+        message = message + f" {arg2}" if arg2 else message
+        message = message + f" {arg3}" if arg3 else message
         print(f"{script_name}: {message}")
 
-class VideoPlayer:
+class PlayerWall:
     def __init__(self, root, video_path, x, y, width, height):
         self.root = root
         self.video_path = video_path
         self.width = width
         self.height = height
-        
+
+        # Meilleur logging pour debug
+        log(f"self: {self}")
+        log(f"root type: {type(self.root)} winfo_id: {self.root.winfo_id()} geometry: {self.root.winfo_geometry()}")
+
         # Configuration macOS
         if os.name == 'posix' and 'darwin' in os.uname().sysname.lower():
             os.environ["MPV_RENDER_API_TYPE"] = "sw"
             os.environ["MPV_MACOS_FORCE_DEDICATED_GPU"] = "1"
+            os.environ["XDG_RUNTIME_DIR"] = "/tmp/runtime-$USER"
         
-        # Conteneur pour le player
+        # Frame conteneur avec gestion stricte de la géométrie
         self.container = tk.Frame(root, width=width, height=height, bg='black')
         self.container.place(x=x, y=y)
         self.container.pack_propagate(False)
+        self.container.grid_propagate(False)
+        
+        # Attendre que le conteneur soit prêt
+        self.root.update_idletasks()
         self.container.update()
         
-        # Configuration MPV avec vos paramètres qui fonctionnent
+        # Configuration MPV simplifiée
         self.player = MPV(
             wid=str(self.container.winfo_id()),
             vo='gl',
             hwdec='auto',
-            log_handler=print if verbose else None,
+            log_handler=log if verbose else None,
             input_default_bindings=True,
-            osc=True,  # Gardé comme demandé
-            keep_open=False,  # Gardé comme demandé
+            osc=True,
+            keep_open=False,
             force_window=False,
-            video_unscaled=False,  # Gardé comme demandé
-            keepaspect=True  # Gardé comme demandé
+            video_unscaled=False,
+            keepaspect=True
         )
         
         # Démarrer la lecture
         self.player.play(video_path)
-
-    def stop(self):
-        if hasattr(self, 'player'):
-            self.player.terminate()
-            self.player = None
 
 def toggle_fullscreen(event, window):
     window.attributes("-fullscreen", not window.attributes("-fullscreen"))
@@ -259,7 +269,7 @@ def create_windows_and_players(screens, slots, video_paths):
                 random.shuffle(playlist)
 
                 # Créer un player pour chaque slot
-                VideoPlayer(window, playlist[0], slot_x - x, slot_y - y, slot_width, slot_height)
+                PlayerWall(window, playlist[0], slot_x - x, slot_y - y, slot_width, slot_height)
 
     return windows
 
