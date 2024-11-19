@@ -4,7 +4,7 @@ import re
 import argparse
 import tkinter as tk
 from tkinter import ttk
-import cv2
+from ffpyplayer.player import MediaPlayer
 from PIL import Image, ImageTk
 import psutil
 import time
@@ -21,22 +21,60 @@ class VideoPlayer:
     def __init__(self, root, video_path, x, y, width, height):
         self.root = root
         self.video_path = video_path
-        self.cap = cv2.VideoCapture(video_path)
         self.canvas = tk.Canvas(root, width=width, height=height)
         self.canvas.place(x=x, y=y)
         self.frame_image = None
+        self.running = True
+
+        # Initialize MediaPlayer
+        self.player = MediaPlayer(video_path, ff_opts={'sync': 'audio'})
+        self.start_time = None  # To track playback start time
         self.update_frame()
 
     def update_frame(self):
-        ret, frame = self.cap.read()
-        if ret:
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            img = Image.fromarray(frame)
+        if not self.running:
+            return
+        
+        if self.start_time is None:
+            self.start_time = time.time()  # Initialize playback start time
+
+        # Get the next video frame and timestamp
+        frame, val = self.player.get_frame()
+
+        if val == 'eof':  # End of file
+            self.running = False
+            return
+
+        if frame is not None:
+            img, t = frame  # Frame and its timestamp
+            elapsed_time = time.time() - self.start_time
+
+            # Define a tolerance (buffer) for synchronization
+            tolerance = 0.05  # 50 ms
+
+            if t < elapsed_time - tolerance:
+                # Frame is too late, skip it
+                print(f"Frame {t:.2f}s is too late, skipping.")
+                self.update_frame()  # Fetch the next frame immediately
+                return
+            elif t > elapsed_time + tolerance:
+                # Frame is too early, delay but ensure recalibration
+                delay = int((t - elapsed_time) * 1000)
+                print(f"Frame {t:.2f}s is early, delaying by {delay}ms.")
+                self.root.after(delay, self.update_frame)
+                return
+
+            # Frame is within the tolerance, display it
+            img = Image.frombytes("RGB", img.get_size(), bytes(img.to_bytearray()[0]))
             self.frame_image = ImageTk.PhotoImage(img)
-            self.canvas.create_image(0, 0, anchor=tk.NW, image=self.frame_image)
-        else:
-            self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # Rewind the video
+            self.canvas.create_image(0, 0, anchor="nw", image=self.frame_image)
+
+        # Continue updating frames
         self.root.after(10, self.update_frame)
+
+    def stop(self):
+        self.running = False
+        self.player.close_player()
 
 def toggle_fullscreen(event, window):
     window.attributes("-fullscreen", not window.attributes("-fullscreen"))
