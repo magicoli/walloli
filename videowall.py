@@ -17,17 +17,41 @@ class VideoPlayer:
     def __init__(self, root, video_path, x, y, width, height):
         self.root = root
         self.video_path = video_path
-        self.canvas = tk.Canvas(root, width=width, height=height, bg='black')
-        self.canvas.place(x=x, y=y)
         self.width = width
         self.height = height
-
-        # Initialize MPV player
-        self.player = MPV(wid=str(self.canvas.winfo_id()), vo='x11', geometry=f'{width}x{height}+{x}+{y}')
+        
+        # Configuration macOS
+        if os.name == 'posix' and 'darwin' in os.uname().sysname.lower():
+            os.environ["MPV_RENDER_API_TYPE"] = "sw"
+            os.environ["MPV_MACOS_FORCE_DEDICATED_GPU"] = "1"
+        
+        # Conteneur pour le player
+        self.container = tk.Frame(root, width=width, height=height, bg='black')
+        self.container.place(x=x, y=y)
+        self.container.pack_propagate(False)
+        self.container.update()
+        
+        # Configuration MPV avec vos paramètres qui fonctionnent
+        self.player = MPV(
+            wid=str(self.container.winfo_id()),
+            vo='gl',
+            hwdec='auto',
+            log_handler=print if verbose else None,
+            input_default_bindings=True,
+            osc=True,  # Gardé comme demandé
+            keep_open=False,  # Gardé comme demandé
+            force_window=False,
+            video_unscaled=False,  # Gardé comme demandé
+            keepaspect=True  # Gardé comme demandé
+        )
+        
+        # Démarrer la lecture
         self.player.play(video_path)
 
     def stop(self):
-        self.player.quit()
+        if hasattr(self, 'player'):
+            self.player.terminate()
+            self.player = None
 
 def toggle_fullscreen(event, window):
     window.attributes("-fullscreen", not window.attributes("-fullscreen"))
