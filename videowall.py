@@ -107,60 +107,29 @@ class VideoPlayer(QtWidgets.QFrame):
         self.player.set_media(media)
         self.player.play()
 
-class MainWindow(QtWidgets.QMainWindow):
+class MainWindow(QtWidgets.QWidget):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
-        self.is_fullscreen = False  # État du plein écran
 
-        # Créer le widget central
-        self.central_widget = QtWidgets.QWidget()
-        self.setCentralWidget(self.central_widget)
+        # Définir les raccourcis clavier
+        toggle_fs_seq = QtGui.QKeySequence("Ctrl+F")
+        toggle_fs = QtWidgets.QShortcut(toggle_fs_seq, self)
+        toggle_fs.activated.connect(self.toggle_fullscreen)
 
-        # Créer la mise en page
-        self.layout = QtWidgets.QVBoxLayout(self.central_widget)
+        exit_fs_seq = QtGui.QKeySequence("Esc")
+        exit_fs = QtWidgets.QShortcut(exit_fs_seq, self)
+        exit_fs.activated.connect(self.exit_fullscreen)
 
-        # Créer les actions
-        self.create_actions()
-        # Créer le menu "View"
-        self.create_menu()
+        close_seq = QtGui.QKeySequence("Ctrl+W")
+        close_shortcut = QtWidgets.QShortcut(close_seq, self)
+        close_shortcut.activated.connect(self.close)
 
-    def create_actions(self):
-        log("Plateforme: " + sys.platform)
-
-        if sys.platform == 'darwin':
-            # macOS
-            self.toggle_fullscreen_action = QtWidgets.QAction("Basculer en Plein Écran", self)
-            self.toggle_fullscreen_action.setShortcut(QtGui.QKeySequence("Ctrl+F"))
-            self.toggle_fullscreen_action.triggered.connect(self.toggle_fullscreen)
-
-            self.close_action = QtWidgets.QAction("Fermer la Fenêtre", self)
-            self.close_action.setShortcut(QtGui.QKeySequence("Ctrl+W"))
-            self.close_action.triggered.connect(self.close)
-        else:
+        if sys.platform != 'darwin':
             # Windows/Linux
-            self.toggle_fullscreen_action = QtWidgets.QAction("Basculer en Plein Écran", self)
-            self.toggle_fullscreen_action.setShortcut(QtGui.QKeySequence("F11"))
-            self.toggle_fullscreen_action.triggered.connect(self.toggle_fullscreen)
-
-            self.toggle_fullscreen_alt_action = QtWidgets.QAction("Basculer en Plein Écran (Ctrl+F)", self)
-            self.toggle_fullscreen_alt_action.setShortcut(QtGui.QKeySequence("Ctrl+F"))
-            self.toggle_fullscreen_alt_action.triggered.connect(self.toggle_fullscreen)
-
-            self.exit_fullscreen_action = QtWidgets.QAction("Quitter le Plein Écran", self)
-            self.exit_fullscreen_action.setShortcut(QtGui.QKeySequence("Escape"))
-            self.exit_fullscreen_action.triggered.connect(self.exit_fullscreen)
-
-            self.close_action = QtWidgets.QAction("Fermer la Fenêtre", self)
-            self.close_action.setShortcut(QtGui.QKeySequence("Ctrl+W"))
-            self.close_action.triggered.connect(self.close)
-
-        # Ajouter les actions à la fenêtre
-        self.addAction(self.toggle_fullscreen_action)
-        if not sys.platform == 'darwin':
-            self.addAction(self.toggle_fullscreen_alt_action)
-            self.addAction(self.exit_fullscreen_action)
-        self.addAction(self.close_action)
+            toggle_fs_seq2 = QtGui.QKeySequence("F11")
+            toggle_fs2 = QtWidgets.QShortcut(toggle_fs_seq1, self)
+            toggle_fs2.activated.connect(self.toggle_fullscreen)
 
     def create_menu(self):
         # Créer un menu "View"
@@ -175,17 +144,12 @@ class MainWindow(QtWidgets.QMainWindow):
     def toggle_fullscreen(self):
         if self.isFullScreen():
             self.showNormal()
-            self.is_fullscreen = False
         else:
             self.showFullScreen()
-            self.is_fullscreen = True
-        log(f"Plein écran {'activé' if self.is_fullscreen else 'désactivé'}")
 
     def exit_fullscreen(self):
-        if self.is_fullscreen:
+        if self.isFullScreen():
             self.showNormal()
-            self.is_fullscreen = False
-            log("Plein écran désactivé")
 
 def create_windows_and_players(screens, slots, video_paths):
     windows = []
@@ -220,6 +184,12 @@ def create_windows_and_players(screens, slots, video_paths):
 
     return windows
 
+def toggle_fullscreen(event, window):
+    window.attributes("-fullscreen", not window.attributes("-fullscreen"))
+
+def exit_fullscreen(event, window):
+    window.attributes("-fullscreen", False)
+
 def find_videos(directory, days=None):
     log("Finding videos in directory " + os.path.abspath(directory))
 
@@ -231,10 +201,11 @@ def find_videos(directory, days=None):
 
     log("Running command: " + ' '.join(command))
     result = subprocess.run(command, capture_output=True, text=True)
+    # log("Command output: " + result.stdout)
 
     files = result.stdout.splitlines()
 
-    # Utiliser regex pour filtrer les fichiers vidéo et exclure ceux dont le nom commence par un point
+    # Utiliser grep pour filtrer les fichiers vidéo et exclure ceux dont le nom commence par un point
     video_extensions = re.compile(r'.*\.(avi|mp4|webm|m4v|mkv|wmv|mov|mpe?g)(\.part)?$', re.IGNORECASE)
     videos = [file for file in files if video_extensions.match(os.path.basename(file)) and not os.path.basename(file).startswith('.')]
 
@@ -247,8 +218,6 @@ def get_screens(screen_number=None):
     if os.name == 'posix' and 'darwin' in os.uname().sysname.lower():
         # macOS
         result = subprocess.run(['displayplacer', 'list'], capture_output=True, text=True)
-        res = None
-        origin = None
         for line in result.stdout.splitlines():
             if 'Resolution:' in line:
                 res = line.split(': ')[1]
@@ -274,21 +243,21 @@ def get_screens(screen_number=None):
                 screens.append((res.split('+')[0], x, y))
     
     screens.sort(key=lambda screen: (screen[1], screen[2]))
-    # Exemple : [('1920x1080', 0, 0), ('1920x1080', 1920, 0), ('1920x1080', -1920, 0)]
-    # Ils doivent être triés par position
-    # Ensuite, si args.screen est spécifié, retourner uniquement cet écran, sinon tous les écrans
+    # result: [('1920x1080', 0, 0), ('1920x1080', 1920, 0), ('1920x1080', -1920, 0)]
+    # They should be sorted by position
+    # Then if args.screen is specified, return only that screen, otherwise return all screens
     if screen_number is not None:
         if 1 <= screen_number <= len(screens):
             screens = [screens[screen_number - 1]]
         else:
             log(f"Invalid screen number: {screen_number}")
-            exit(1)  # Quitter avec une erreur si le numéro d'écran est invalide
+            exit(1)  # Exit with error if the screen number is invalid
 
     return screens
 
 def get_slots(video_paths, screens, args):
     log("Initializing windows and players")
-    # (un par écran aka moniteur aka display) et players (un ou plusieurs players par fenêtre)
+    #  (one per screen aka monitor aka display) and players (one or more players per window)")
 
     log(f"Total screens: {screens}")
 
@@ -296,26 +265,29 @@ def get_slots(video_paths, screens, args):
 
     if args.singleloop:
         log(f"Single loop: {args.singleloop}")
-        # single loop affiche un player pour chaque vidéo dans la liste
+        # single loop shows a player for each video in the list
         min_players = len(video_paths)
     elif args.number:
         log(f"Requested videos per screen: {args.number}")
         min_players = len(screens) * args.number
     else:
-        min_players = len(screens) # un player par écran par défaut
+        min_players = len(screens) # one player per screen by default
 
     if args.max:
-        # définir le nombre total de players au minimum entre args.max, args.number et len(video_paths)
+        # set total players to minimum value between args.max, args.number and len(video_paths)
         min_players = min(args.max, args.number if args.number else min_players, len(video_paths))
-        # TODO: mélanger si nécessaire, puis tronquer la liste
+
+        # TODO: shuffle if needed, then truncate the list
         # video_paths = video_paths[:args.max]
     else:
         args.max = args.number if args.number else min_players
 
     log(f"Min players: {min_players}")
-    # Calculer le meilleur ajustement réel pour les slots. Diviser chaque écran en slots par x,y
+    # Calculate actual best fit for slots. Divide each screen in slots by x,y
     min_slots_per_screen = ceil(min_players / len(screens))
+    # log(f"Min slots per screen: {min_slots_per_screen}")
     optimized_slots_per_screen = ceil(sqrt(min_slots_per_screen)) ** 2
+    # log(f"Optimized slots per screen: {optimized_slots_per_screen}")
 
     best_fit = None
     if args.bestfit:
@@ -326,10 +298,12 @@ def get_slots(video_paths, screens, args):
             if diff < min_diff:
                 min_diff = diff
                 best_fit = (rows, cols)
+        # log(f"Best fit: {best_fit}")
         slots_grid = best_fit
     else:
         slots_per_side = ceil(sqrt(optimized_slots_per_screen))
         slots_grid = (slots_per_side, slots_per_side)
+    # log(f"Slots grid: {slots_grid}")
 
     slots_per_screen = slots_grid[0] * slots_grid[1]
     log(f"Slots per screen: {slots_per_screen}")
@@ -342,7 +316,7 @@ def get_slots(video_paths, screens, args):
 
     slots = []
     slot_index = 0
-    ignore_slots = set()  # Tableau pour noter les blocs à ignorer
+    ignore_slots = set()  # Table to note the blocks to ignore
     screen_index = 0
     for screen in screens:
         res, x, y = screen
@@ -365,7 +339,7 @@ def get_slots(video_paths, screens, args):
                 current_slot_width = slot_default_width
 
                 if empty_slots >= 1 and row < rows - 1:
-                    # Vérifier s'il y a un slot en dessous
+                    # Check if there is a slot below
                     ignore_slots.add((row + 1, col))
                     current_slot_height *= 2
                     empty_slots -= 1
