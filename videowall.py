@@ -71,15 +71,18 @@ import vlc
 from PyQt5 import QtWidgets, QtCore, QtGui
 
 class VideoPlayer(QtWidgets.QFrame):
-    def __init__(self, video_path, parent=None, width=300, height=200):
+    def __init__(self, video_path, parent=None, width=300, height=200, color=None):
         super(VideoPlayer, self).__init__(parent)
         self.video_path = video_path
         self.setStyleSheet("background-color: black;")
         self.setGeometry(0, 0, width, height)  # Définir la taille selon le slot
+
+        if color is not None:        
+            self.setStyleSheet(f"background-color: {color.name()}; border: solid 5px {color.name()};")
         
         # Autoriser le focus
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
-        
+
         # Vérifiez si le fichier vidéo existe
         if not os.path.exists(self.video_path):
             log(f"Fichier vidéo non trouvé: {self.video_path}")
@@ -180,6 +183,8 @@ class MainWindow(QtWidgets.QWidget):
 
 def create_windows_and_players(screens, slots, video_paths):
     windows = []
+    total_slots = len(slots)
+    slot_index = 0
     for screen_index, screen in enumerate(screens):
         # Créer une fenêtre personnalisée pour chaque écran
         window = MainWindow()
@@ -193,7 +198,6 @@ def create_windows_and_players(screens, slots, video_paths):
         # Liste des slots pour cet écran
         screen_slots = [slot for slot in slots if slot[0] == screen_index]
         log(f"Screen {screen_index} slots: {screen_slots}")
-        
         for slot in screen_slots:
             _, slot_x, slot_y, slot_width, slot_height = slot
 
@@ -204,10 +208,17 @@ def create_windows_and_players(screens, slots, video_paths):
             # Sélectionner une vidéo aléatoire ou séquentielle
             video_path = random.choice(video_paths)
 
+            # Calculate a color, with hue based on the slot index and saturation/value fixed
+            hue = (360 / total_slots * slot_index) % 360
+            color = QtGui.QColor.fromHsvF(hue / 360, 1, 1)
+
             # Créer un player pour chaque slot avec taille dynamique
-            player = VideoPlayer(video_path, window, slot_width, slot_height)
+            log (f"adding player in screen {screen_index} slot {slot_index} at ({relative_x}, {relative_y}) {slot_width}x{slot_height} with color {color.name()}")
+            player = VideoPlayer(video_path, window, slot_width, slot_height, color)
             player.setGeometry(relative_x, relative_y, slot_width, slot_height)  # Positionnement correct
             player.show()
+
+            slot_index += 1
 
     return windows
 
