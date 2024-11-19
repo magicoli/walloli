@@ -10,6 +10,7 @@ import psutil
 import time
 from math import ceil, sqrt
 import random
+import threading
 
 # Fonction de journalisation
 def log(message):
@@ -17,8 +18,9 @@ def log(message):
         script_name = os.path.basename(__file__)
         print(f"{script_name}: {message}")
 
-class VideoPlayer:
+class VideoPlayer(threading.Thread):
     def __init__(self, root, video_path, x, y, width, height):
+        threading.Thread.__init__(self)
         self.root = root
         self.video_path = video_path
         self.canvas = tk.Canvas(root, width=width, height=height, bg='black')
@@ -31,49 +33,51 @@ class VideoPlayer:
         # Initialize MediaPlayer
         self.player = MediaPlayer(video_path, ff_opts={'sync': 'audio'})
         self.start_time = None  # To track playback start time
+        self.start()
+
+    def run(self):
         self.update_frame()
 
     def update_frame(self):
-        if not self.running:
-            return
-        
-        if self.start_time is None:
-            self.start_time = time.time()  # Initialize playback start time
+        while self.running:
+            if self.start_time is None:
+                self.start_time = time.time()  # Initialize playback start time
 
-        # Get the next video frame and timestamp
-        frame, val = self.player.get_frame()
+            # Get the next video frame and timestamp
+            frame, val = self.player.get_frame()
 
-        if val == 'eof':  # End of file
-            self.running = False
-            return
+            if val == 'eof':  # End of file
+                self.running = False
+                break
 
-        if frame is not None:
-            img, t = frame  # Frame and its timestamp
-            elapsed_time = time.time() - self.start_time
+            if frame is not None:
+                img, t = frame  # Frame and its timestamp
+                elapsed_time = time.time() - self.start_time
 
-            # Define a tolerance (buffer) for synchronization
-            tolerance = 0.05  # 50 ms
+                # Define a tolerance (buffer) for synchronization
+                tolerance = 0.05  # 50 ms
 
-            if t < elapsed_time - tolerance:
-                # Frame is too late, skip it
-                print(f"Frame {t:.2f}s is too late, skipping.")
-                self.update_frame()  # Fetch the next frame immediately
-                return
-            elif t > elapsed_time + tolerance:
-                # Frame is too early, delay but ensure recalibration
-                delay = int((t - elapsed_time) * 1000)
-                print(f"Frame {t:.2f}s is early, delaying by {delay}ms.")
-                self.root.after(delay, self.update_frame)
-                return
+                if t < elapsed_time - tolerance:
+                    # Frame is too late, skip it
+                    print(f"Frame {t:.2f}s is too late, skipping.")
+                    continue
+                elif t > elapsed_time + tolerance:
+                    # Frame is too early, delay but ensure recalibration
+                    delay = int((t - elapsed_time) * 1000)
+                    print(f"Frame {t:.2f}s is early, delaying by {delay}ms.")
+                    time.sleep(delay / 1000)
+                    continue
 
-            # Frame is within the tolerance, display it
-            img = Image.frombytes("RGB", img.get_size(), bytes(img.to_bytearray()[0]))
-            img = self.fit_image_to_slot(img)
-            self.frame_image = ImageTk.PhotoImage(img)
-            self.canvas.create_image(self.width // 2, self.height // 2, anchor="center", image=self.frame_image)
+                # Frame is within the tolerance, display it
+                img = Image.frombytes("RGB", img.get_size(), bytes(img.to_bytearray()[0]))
+                img = self.fit_image_to_slot(img)
+                self.frame_image = ImageTk.PhotoImage(img)
+                self.root.after(0, self.update_canvas, self.frame_image)
 
-        # Continue updating frames
-        self.root.after(10, self.update_frame)
+            time.sleep(0.01)  # Small delay to prevent high CPU usage
+
+    def update_canvas(self, frame_image):
+        self.canvas.create_image(self.width // 2, self.height // 2, anchor="center", image=frame_image)
 
     def fit_image_to_slot(self, img):
         img_ratio = img.width / img.height
@@ -298,7 +302,8 @@ def create_windows_and_players(screens, slots, video_paths):
                 random.shuffle(playlist)
 
                 # Créer un player pour chaque slot
-                VideoPlayer(window, playlist[0], slot_x - x, slot_y - y, slot_width, slot_height)
+                player = VideoPlayer(window, playlist[0], slot_x - x, slot_y - y, slot_width, slot_height)
+                player.start()
 
     return windows
 
