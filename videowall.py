@@ -5,6 +5,7 @@ import re
 import argparse
 from math import ceil, sqrt
 import random
+import time
 
 # This test script is intended to find a way to display several videos in a single window
 #
@@ -76,6 +77,9 @@ class VideoPlayer(QtWidgets.QFrame):
         self.setStyleSheet("background-color: black;")
         self.setGeometry(0, 0, width, height)  # Définir la taille selon le slot
         
+        # Autoriser le focus
+        self.setFocusPolicy(QtCore.Qt.StrongFocus)
+        
         # Vérifiez si le fichier vidéo existe
         if not os.path.exists(self.video_path):
             log(f"Fichier vidéo non trouvé: {self.video_path}")
@@ -105,7 +109,30 @@ class VideoPlayer(QtWidgets.QFrame):
         # Charger et jouer le média
         media = self.instance.media_new(self.video_path)
         self.player.set_media(media)
+        self.player.video_set_key_input(True)
+        self.player.video_set_mouse_input(True)
         self.player.play()
+    
+    def mousePressEvent(self, event):
+        # Lorsque le player est cliqué, il reçoit le focus
+        self.setFocus()
+        super(VideoPlayer, self).mousePressEvent(event)
+    
+    def keyPressEvent(self, event):
+        # Gérer les événements clavier spécifiques
+        if event.key() == QtCore.Qt.Key_Space:
+            if self.player.is_playing():
+                self.player.pause()
+                log(f"Pause de {self.video_path}")
+            else:
+                self.player.play()
+                log(f"Lecture de {self.video_path}")
+        elif event.key() == QtCore.Qt.Key_S:
+            self.player.stop()
+            log(f"Arrêt de {self.video_path}")
+        else:
+            super(VideoPlayer, self).keyPressEvent(event)
+
 
 class MainWindow(QtWidgets.QWidget):
     def __init__(self, *args, **kwargs):
