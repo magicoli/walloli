@@ -111,44 +111,37 @@ class MainWindow(QtWidgets.QWidget):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
+        self.is_fullscreen = False  # État du plein écran
 
-        # Définir les raccourcis clavier
+    def keyPressEvent(self, event):
         if sys.platform == 'darwin':
-            # macOS
-            toggle_fs_seq = QtGui.QKeySequence("Meta+F")
-            toggle_fs = QtWidgets.QShortcut(toggle_fs_seq, self)
-            toggle_fs.activated.connect(self.toggle_fullscreen)
-
-            close_seq = QtGui.QKeySequence("Meta+W")
-            close_shortcut = QtWidgets.QShortcut(close_seq, self)
-            close_shortcut.activated.connect(self.close)
+            modifier = QtCore.Qt.MetaModifier
+            cmd_pressed = event.modifiers() & QtCore.Qt.MetaModifier
+            if cmd_pressed and event.key() == QtCore.Qt.Key_F:
+                self.toggle_fullscreen()
+            elif cmd_pressed and event.key() == QtCore.Qt.Key_W:
+                self.close()
         else:
-            # Windows/Linux
-            toggle_fs_seq1 = QtGui.QKeySequence("F11")
-            toggle_fs1 = QtWidgets.QShortcut(toggle_fs_seq1, self)
-            toggle_fs1.activated.connect(self.toggle_fullscreen)
-
-            toggle_fs_seq2 = QtGui.QKeySequence("Ctrl+F")
-            toggle_fs2 = QtWidgets.QShortcut(toggle_fs_seq2, self)
-            toggle_fs2.activated.connect(self.toggle_fullscreen)
-
-            exit_fs_seq = QtGui.QKeySequence("Escape")
-            exit_fs = QtWidgets.QShortcut(exit_fs_seq, self)
-            exit_fs.activated.connect(self.exit_fullscreen)
-
-            close_seq = QtGui.QKeySequence("Ctrl+W")
-            close_shortcut = QtWidgets.QShortcut(close_seq, self)
-            close_shortcut.activated.connect(self.close)
+            if event.key() == QtCore.Qt.Key_F11:
+                self.toggle_fullscreen()
+            elif event.key() == QtCore.Qt.Key_Escape:
+                if self.is_fullscreen:
+                    self.showNormal()
+                    self.is_fullscreen = False
+            elif (event.modifiers() & QtCore.Qt.ControlModifier) and event.key() == QtCore.Qt.Key_F:
+                self.toggle_fullscreen()
+            elif (event.modifiers() & QtCore.Qt.ControlModifier) and event.key() == QtCore.Qt.Key_W:
+                self.close()
+        super(MainWindow, self).keyPressEvent(event)
 
     def toggle_fullscreen(self):
         if self.isFullScreen():
             self.showNormal()
+            self.is_fullscreen = False
         else:
             self.showFullScreen()
-
-    def exit_fullscreen(self):
-        if self.isFullScreen():
-            self.showNormal()
+            self.is_fullscreen = True
+        log(f"Plein écran {'activé' if self.is_fullscreen else 'désactivé'}")
 
 def create_windows_and_players(screens, slots, video_paths):
     windows = []
@@ -183,12 +176,6 @@ def create_windows_and_players(screens, slots, video_paths):
 
     return windows
 
-def toggle_fullscreen(event, window):
-    window.attributes("-fullscreen", not window.attributes("-fullscreen"))
-
-def exit_fullscreen(event, window):
-    window.attributes("-fullscreen", False)
-
 def find_videos(directory, days=None):
     log("Finding videos in directory " + os.path.abspath(directory))
 
@@ -200,11 +187,10 @@ def find_videos(directory, days=None):
 
     log("Running command: " + ' '.join(command))
     result = subprocess.run(command, capture_output=True, text=True)
-    # log("Command output: " + result.stdout)
 
     files = result.stdout.splitlines()
 
-    # Utiliser grep pour filtrer les fichiers vidéo et exclure ceux dont le nom commence par un point
+    # Utiliser regex pour filtrer les fichiers vidéo et exclure ceux dont le nom commence par un point
     video_extensions = re.compile(r'.*\.(avi|mp4|webm|m4v|mkv|wmv|mov|mpe?g)(\.part)?$', re.IGNORECASE)
     videos = [file for file in files if video_extensions.match(os.path.basename(file)) and not os.path.basename(file).startswith('.')]
 
@@ -217,6 +203,8 @@ def get_screens(screen_number=None):
     if os.name == 'posix' and 'darwin' in os.uname().sysname.lower():
         # macOS
         result = subprocess.run(['displayplacer', 'list'], capture_output=True, text=True)
+        res = None
+        origin = None
         for line in result.stdout.splitlines():
             if 'Resolution:' in line:
                 res = line.split(': ')[1]
@@ -242,21 +230,21 @@ def get_screens(screen_number=None):
                 screens.append((res.split('+')[0], x, y))
     
     screens.sort(key=lambda screen: (screen[1], screen[2]))
-    # result: [('1920x1080', 0, 0), ('1920x1080', 1920, 0), ('1920x1080', -1920, 0)]
-    # They should be sorted by position
-    # Then if args.screen is specified, return only that screen, otherwise return all screens
+    # Exemple : [('1920x1080', 0, 0), ('1920x1080', 1920, 0), ('1920x1080', -1920, 0)]
+    # Ils doivent être triés par position
+    # Ensuite, si args.screen est spécifié, retourner uniquement cet écran, sinon tous les écrans
     if screen_number is not None:
         if 1 <= screen_number <= len(screens):
             screens = [screens[screen_number - 1]]
         else:
             log(f"Invalid screen number: {screen_number}")
-            exit(1)  # Exit with error if the screen number is invalid
+            exit(1)  # Quitter avec une erreur si le numéro d'écran est invalide
 
     return screens
 
 def get_slots(video_paths, screens, args):
     log("Initializing windows and players")
-    #  (one per screen aka monitor aka display) and players (one or more players per window)")
+    # (un par écran aka moniteur aka display) et players (un ou plusieurs players par fenêtre)
 
     log(f"Total screens: {screens}")
 
@@ -264,29 +252,26 @@ def get_slots(video_paths, screens, args):
 
     if args.singleloop:
         log(f"Single loop: {args.singleloop}")
-        # single loop shows a player for each video in the list
+        # single loop affiche un player pour chaque vidéo dans la liste
         min_players = len(video_paths)
     elif args.number:
         log(f"Requested videos per screen: {args.number}")
         min_players = len(screens) * args.number
     else:
-        min_players = len(screens) # one player per screen by default
+        min_players = len(screens) # un player par écran par défaut
 
     if args.max:
-        # set total players to minimum value between args.max, args.number and len(video_paths)
+        # définir le nombre total de players au minimum entre args.max, args.number et len(video_paths)
         min_players = min(args.max, args.number if args.number else min_players, len(video_paths))
-
-        # TODO: shuffle if needed, then truncate the list
+        # TODO: mélanger si nécessaire, puis tronquer la liste
         # video_paths = video_paths[:args.max]
     else:
         args.max = args.number if args.number else min_players
 
     log(f"Min players: {min_players}")
-    # Calculate actual best fit for slots. Divide each screen in slots by x,y
+    # Calculer le meilleur ajustement réel pour les slots. Diviser chaque écran en slots par x,y
     min_slots_per_screen = ceil(min_players / len(screens))
-    # log(f"Min slots per screen: {min_slots_per_screen}")
     optimized_slots_per_screen = ceil(sqrt(min_slots_per_screen)) ** 2
-    # log(f"Optimized slots per screen: {optimized_slots_per_screen}")
 
     best_fit = None
     if args.bestfit:
@@ -297,12 +282,10 @@ def get_slots(video_paths, screens, args):
             if diff < min_diff:
                 min_diff = diff
                 best_fit = (rows, cols)
-        # log(f"Best fit: {best_fit}")
         slots_grid = best_fit
     else:
         slots_per_side = ceil(sqrt(optimized_slots_per_screen))
         slots_grid = (slots_per_side, slots_per_side)
-    # log(f"Slots grid: {slots_grid}")
 
     slots_per_screen = slots_grid[0] * slots_grid[1]
     log(f"Slots per screen: {slots_per_screen}")
@@ -315,7 +298,7 @@ def get_slots(video_paths, screens, args):
 
     slots = []
     slot_index = 0
-    ignore_slots = set()  # Table to note the blocks to ignore
+    ignore_slots = set()  # Tableau pour noter les blocs à ignorer
     screen_index = 0
     for screen in screens:
         res, x, y = screen
@@ -338,7 +321,7 @@ def get_slots(video_paths, screens, args):
                 current_slot_width = slot_default_width
 
                 if empty_slots >= 1 and row < rows - 1:
-                    # Check if there is a slot below
+                    # Vérifier s'il y a un slot en dessous
                     ignore_slots.add((row + 1, col))
                     current_slot_height *= 2
                     empty_slots -= 1
