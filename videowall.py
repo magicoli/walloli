@@ -25,6 +25,8 @@ class VideoPlayer:
         self.canvas.place(x=x, y=y)
         self.frame_image = None
         self.running = True
+        self.width = width
+        self.height = height
 
         # Initialize MediaPlayer
         self.player = MediaPlayer(video_path, ff_opts={'sync': 'audio'})
@@ -66,11 +68,25 @@ class VideoPlayer:
 
             # Frame is within the tolerance, display it
             img = Image.frombytes("RGB", img.get_size(), bytes(img.to_bytearray()[0]))
+            img = self.fit_image_to_slot(img)
             self.frame_image = ImageTk.PhotoImage(img)
             self.canvas.create_image(0, 0, anchor="nw", image=self.frame_image)
 
         # Continue updating frames
         self.root.after(10, self.update_frame)
+
+    def fit_image_to_slot(self, img):
+        img_ratio = img.width / img.height
+        slot_ratio = self.width / self.height
+
+        if img_ratio > slot_ratio:
+            new_width = self.width
+            new_height = int(self.width / img_ratio)
+        else:
+            new_height = self.height
+            new_width = int(self.height * img_ratio)
+
+        return img.resize((new_width, new_height), Image.ANTIALIAS)
 
     def stop(self):
         self.running = False
