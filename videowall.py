@@ -354,9 +354,9 @@ def get_slots(video_paths, screens, args):
 
     slots = []
     slot_index = 0
-    ignore_slots = set()  # Table to note the blocks to ignore
     screen_index = 0
     for screen in screens:
+        ignore_slots = set()  # Table to note the blocks to ignore
         res, x, y = screen
         log("Screen resolution " + res + " at position " + str((x, y)))
         width, height = map(int, res.split('x'))
@@ -368,7 +368,9 @@ def get_slots(video_paths, screens, args):
 
         for row in range(rows):
             for col in range(cols):
+                log("Checkng slot " + str((row, col)))
                 if (row, col) in ignore_slots:
+                    log("slot " +  str((row, col)) + " is in ignore list, skipping")
                     continue
 
                 slot_x = x + col * slot_default_width
@@ -376,6 +378,7 @@ def get_slots(video_paths, screens, args):
                 current_slot_height = slot_default_height
                 current_slot_width = slot_default_width
 
+                new_ignores = set()
                 if empty_slots >= 1 and row < rows - 1:
                     # Check if there is a slot below
                     ignore_slots.add((row + 1, col))
@@ -386,13 +389,15 @@ def get_slots(video_paths, screens, args):
                         ignore_slots.add((row + 1, col + 1))
                         current_slot_width *= 2
                         empty_slots -= 2
-
+                
                 slots.append((screen_index, slot_x, slot_y, current_slot_width, current_slot_height))
 
                 log(f"  Slot {slot_index} {current_slot_width}x{current_slot_height} at ({slot_x}, {slot_y})")
                 slot_index += 1
         screen_index +=1
 
+    log("Slots: " + str(slots))
+    # exit(0) # DEBUG
     return slots
 
 def main():
