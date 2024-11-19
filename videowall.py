@@ -1,57 +1,144 @@
+import sys
 import os
 import subprocess
 import re
 import argparse
-import tkinter as tk
-from mpv import MPV
 from math import ceil, sqrt
 import random
 
-# Fonction de journalisation
-def log(message, arg2=None, arg3=None):
-    if verbose:
-        script_name = os.path.basename(__file__)
-        # remove trailer return in arg3
-        if arg3:
-            arg3 = arg3.rstrip()
-        # add arg2 and arg3 if they are not None
-        message = message + f" {arg2}" if arg2 else message
-        message = message + f" {arg3}" if arg3 else message
-        print(f"{script_name}: {message}")
+# This test script is intended to find a way to display several videos in a single window
+#
+# This script is supposed to be multiplatform, even if it's developed on macOS
+# Do not suggest solutions for macOS only, unless it's a macOS-specific issue
+# Do not remove developer's comments
 
-class PlayerWall:
-    def __init__(self, parent, video_path, x, y, width, height):
-        # Configuration spécifique macOS
-        # if os.name == 'posix' and 'darwin' in os.uname().sysname.lower():
-        #     os.environ["MPV_RENDER_API_TYPE"] = "sw"
-        #     os.environ["MPV_MACOS_FORCE_DEDICATED_GPU"] = "1"
-        #     os.environ["MPV_NO_WINDOW"] = "1"  # Tenter de forcer le mode sans fenêtre
+# La fonction de log fonctionne parfaitement, ne la changez pas, ne la supprimez pas.
+def log(message, *args):
+    # if verbose:
+    script_name = os.path.basename(__file__)
+    if args:
+        message += " " + " ".join(str(arg) for arg in args).rstrip()
+    print(f"{script_name}: {message}")
+
+def find_vlc_lib():
+    """
+    Recherche le chemin de la bibliothèque libvlccore en fonction du système d'exploitation.
+    Retourne le chemin complet si trouvé, sinon None.
+    """
+    if sys.platform.startswith('darwin'):
+        # Chemins courants pour VLC sur macOS
+        vlc_paths = [
+            "/Applications/VLC.app/Contents/MacOS/lib/libvlccore.dylib",
+            "/Applications/VLC.app/Contents/MacOS/lib/libvlccore.9.dylib",  # Adapter selon la version
+        ]
+    elif sys.platform.startswith('linux'):
+        # Chemins courants pour VLC sur Linux
+        vlc_paths = [
+            "/usr/lib/libvlccore.so",
+            "/usr/local/lib/libvlccore.so",
+            "/snap/vlc/current/lib/libvlccore.so",  # Pour les installations via snap
+        ]
+    elif sys.platform == "win32":
+        # Chemins courants pour VLC sur Windows
+        vlc_paths = [
+            "C:\\Program Files\\VideoLAN\\VLC\\libvlccore.dll",
+            "C:\\Program Files (x86)\\VideoLAN\\VLC\\libvlccore.dll",
+        ]
+    else:
+        vlc_paths = []
+    
+    for path in vlc_paths:
+        if os.path.exists(path):
+            return path
+    return None
+
+# Vérifier la présence de VLC
+vlc_lib_path = find_vlc_lib()
+
+if not vlc_lib_path:
+    log("VLC n'est pas installé ou libvlccore n'a pas été trouvé.")
+    log("Veuillez installer VLC depuis https://www.videolan.org/vlc/download-macosx.html")
+    sys.exit(1)
+# else:
+#     # Optionnel : Ajouter le chemin de la bibliothèque VLC aux variables d'environnement
+#     vlc_lib_dir = os.path.dirname(vlc_lib_path)
+#     os.environ['PATH'] = vlc_lib_dir + os.pathsep + os.environ.get('PATH', '')
+#     os.environ['PYTHON_VLC_LIB_PATH'] = vlc_lib_dir
+
+# Maintenant que VLC est vérifié, importer le module vlc
+import vlc
+from PyQt5 import QtWidgets, QtCore
+
+class VideoPlayer(QtWidgets.QFrame):
+    def __init__(self, video_path, parent=None, width=300, height=200):
+        super(VideoPlayer, self).__init__(parent)
+        self.video_path = video_path
+        self.setStyleSheet("background-color: black;")
+        self.setGeometry(0, 0, width, height)  # Définir la taille selon le slot
         
-        debug_colors = ['red', 'green', 'blue', 'yellow', 'purple', 'orange', 'pink', 'cyan']
-        random_color = random.choice(debug_colors)
+        # Vérifiez si le fichier vidéo existe
+        if not os.path.exists(self.video_path):
+            log(f"Fichier vidéo non trouvé: {self.video_path}")
+            return
+
+        # Créer un widget pour le rendu vidéo
+        self.video_widget = QtWidgets.QFrame(self)
+        self.video_widget.setGeometry(0, 0, width, height)
+        self.video_widget.setStyleSheet("background-color: black;")
+
+        # Instance VLC
+        try:
+            self.instance = vlc.Instance()
+            self.player = self.instance.media_player_new()
+        except Exception as e:
+            log(f"Erreur lors de l'initialisation de VLC: {e}")
+            return
+
+        # Configuration du rendu vidéo selon le système d'exploitation
+        if sys.platform.startswith('linux'):  # pour Linux
+            self.player.set_xwindow(self.video_widget.winId())
+        elif sys.platform == "win32":  # pour Windows
+            self.player.set_hwnd(self.video_widget.winId())
+        elif sys.platform == "darwin":  # pour macOS
+            self.player.set_nsobject(int(self.video_widget.winId()))
+
+        # Charger et jouer le média
+        media = self.instance.media_new(self.video_path)
+        self.player.set_media(media)
+        self.player.play()
+
+def create_windows_and_players(screens, slots, video_paths):
+    windows = []
+    for screen_index, screen in enumerate(screens):
+        # Créer une fenêtre pour chaque écran
+        window = QtWidgets.QWidget()
+        window.setWindowTitle("Videowall")  # Définir le titre de la fenêtre
+        res, x, y = screen
+        width, height = map(int, res.split('x'))
+        window.setGeometry(x, y, width, height)
+        window.showFullScreen()  # Ouvrir en plein écran par défaut
+        windows.append(window)
+
+        # Liste des slots pour cet écran
+        screen_slots = [slot for slot in slots if slot[0] == screen_index]
+        log(f"Screen {screen_index} slots: {screen_slots}")
         
-        self.container = tk.Frame(parent, width=width, height=height, bg=random_color)  # Couleur aléatoire
-        self.container.place(x=x, y=y)
-        self.container.pack_propagate(False)
-        self.container.update()
-        
-        # Configuration MPV pour macOS
-        self.player = MPV(
-            wid=str(self.container.winfo_id()),
-            hwdec='auto',
-            input_vo_keyboard=True,
-            osc=True,
-            # fullscreen=False,
-            # force_window=False,  # Important : désactiver la création de fenêtre
-            vo='libmpv'  # Tester le backend libmpv sur macOS
-        )
-        
-        # Démarrer la lecture
-        self.player.play(video_path)
-        
-        # # Attendre que le container soit prêt et re-forcer la géométrie
-        # self.container.update_idletasks()
-        # self.player.fullscreen = False
+        for slot in screen_slots:
+            _, slot_x, slot_y, slot_width, slot_height = slot
+
+            # Calculer la position relative au sein de la fenêtre
+            relative_x = slot_x - x
+            relative_y = slot_y - y
+
+            # Sélectionner une vidéo aléatoire ou séquentielle
+            video_path = random.choice(video_paths)
+
+            # Créer un player pour chaque slot avec taille dynamique
+            player = VideoPlayer(video_path, window, slot_width, slot_height)
+            player.setGeometry(relative_x, relative_y, slot_width, slot_height)  # Correction de l'ordre
+            player.show()
+
+    return windows
 
 def toggle_fullscreen(event, window):
     window.attributes("-fullscreen", not window.attributes("-fullscreen"))
@@ -143,13 +230,13 @@ def get_slots(video_paths, screens, args):
         min_players = len(screens) # one player per screen by default
 
     if args.max:
-        # set total players to minimum value between args.max, args.number and len(video_paths
-        min_players = min(args.max, args.number, len(video_paths))
+        # set total players to minimum value between args.max, args.number and len(video_paths)
+        min_players = min(args.max, args.number if args.number else min_players, len(video_paths))
 
         # TODO: shuffle if needed, then truncate the list
         # video_paths = video_paths[:args.max]
     else:
-        args.max = args.number
+        args.max = args.number if args.number else min_players
 
     log(f"Min players: {min_players}")
     # Calculate actual best fit for slots. Divide each screen in slots by x,y
@@ -217,10 +304,11 @@ def get_slots(video_paths, screens, args):
                         ignore_slots.add((row + 1, col + 1))
                         current_slot_width *= 2
                         empty_slots -= 2
-                
+
                 slots.append((screen_index, slot_x, slot_y, current_slot_width, current_slot_height))
-                
+
                 log(f"  Slot {slot_index} {current_slot_width}x{current_slot_height} at ({slot_x}, {slot_y})")
+                slot_index += 1
 
                 # DO NOT UNCOMMENT PLAYER INITIALIZATION, we do'nt give a shit until the slots are properly defined
                 # player = MediaPlayer(video_paths[slot_index % len(video_paths)])
@@ -231,41 +319,12 @@ def get_slots(video_paths, screens, args):
 
     return slots
 
-def create_windows_and_players(screens, slots, video_paths):
-    windows = []
-    for screen_index, screen in enumerate(screens):
-        # Créer une fenêtre pour chaque écran
-        window = tk.Tk()
-        window.title("Videowall")  # Définir le titre de la fenêtre
-        res, x, y = screen
-        width, height = map(int, res.split('x'))
-        window.geometry(f"{width}x{height}+{x}+{y}")
-        window.attributes("-fullscreen", True)  # Ouvrir en plein écran par défaut
-        windows.append(window)
-
-        # Assigner les touches pour quitter et réactiver le plein écran
-        window.bind("<Escape>", lambda event, win=window: exit_fullscreen(event, win))
-        if os.name == 'posix' and 'darwin' in os.uname().sysname.lower():
-            window.bind("<Command-f>", lambda event, win=window: toggle_fullscreen(event, win))
-        else:
-            window.bind("<F11>", lambda event, win=window: toggle_fullscreen(event, win))
-
-        # Positionner les players dans chaque slot correspondant à cet écran
-        for slot in slots:
-            slot_screen_index, slot_x, slot_y, slot_width, slot_height = slot
-            if slot_screen_index == screen_index:
-                # Mélanger les vidéos pour chaque player
-                playlist = video_paths[:]
-                random.shuffle(playlist)
-
-                # Créer un player pour chaque slot
-                PlayerWall(window, playlist[0], slot_x - x, slot_y - y, slot_width, slot_height)
-
-    return windows
-
 def main():
     global verbose
     verbose = False
+
+    # Initialiser QApplication avant de créer des widgets
+    app = QtWidgets.QApplication(sys.argv)
 
     parser = argparse.ArgumentParser(description="Video Wall")
     parser.add_argument('-n', '--number', type=int, default=1, help='Number of players to display')
@@ -303,9 +362,8 @@ def main():
     windows = create_windows_and_players(screens, slots, video_paths)
     log("Windows: " + str(windows))
 
-    # Lancer la boucle principale de Tkinter
-    for window in windows:
-        window.mainloop()
+    # Lancer la boucle principale de PyQt
+    sys.exit(app.exec_())
 
 if __name__ == "__main__":
     main()
