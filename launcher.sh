@@ -75,29 +75,26 @@ fi
 if [ ! -f "$timestamp_file" ] || [ $(find "$timestamp_file" -mmin +360) ]; then
     log "Check dependencies"
     
-    pip install --upgrade pip || end $? "Failed to upgrade pip"
-
-    pip install opencv-python-headless \
-    && pip install psutil \
-    && pip install pillow \
-    && pip install argparse \
-    && pip install ffpyplayer \
-    || end $? "Failed to install $_"
-
-    # Vérifier si Tkinter est installé
+    # Vérifier si Tkinter est installé en premier
     python -c "import tkinter" 2>/dev/null || end $? "Tkinter is required to run this script.
 
     - macos:    brew install python-tk
     - linux:    sudo apt-get update && sudo apt-get install python3-tk -y
     - windows:  idk&idc
 
-    After installing it, delete the venv directory $venv_dir before running the script again"
+    After installing it, delete the directory $venv_dir before running the script again"
+
+    # Si Tkinter est OK, procéder aux installations pip
+    pip install --upgrade pip || end $? "Failed to upgrade pip"
+    
+    pip install python-mpv \
+    || end $? "Failed to install $_"
 
     touch "$timestamp_file"
 else
     log "Skip dependency check"
 fi
 
-log "Launch main script"
 # Exécuter le script Python
+log "Launch main script"
 python "$basedir/videowall.py" "$@"
