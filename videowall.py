@@ -86,7 +86,7 @@ class VideoPlayer:
             new_height = self.height
             new_width = int(self.height * img_ratio)
 
-        return img.resize((new_width, new_height), Image.ANTIALIAS)
+        return img.resize((new_width, new_height), Image.LANCZOS)
 
     def stop(self):
         self.running = False
