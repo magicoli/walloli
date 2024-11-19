@@ -20,44 +20,27 @@ def log(message, arg2=None, arg3=None):
         print(f"{script_name}: {message}")
 
 class PlayerWall:
-    def __init__(self, root, video_path, x, y, width, height):
-        self.root = root
+    def __init__(self, parent, video_path, x, y, width, height):
+        self.parent = parent  # Plus précis que 'root'
         self.video_path = video_path
         self.width = width
         self.height = height
-
-        # Meilleur logging pour debug
-        log(f"self: {self}")
-        log(f"root type: {type(self.root)} winfo_id: {self.root.winfo_id()} geometry: {self.root.winfo_geometry()}")
-
-        # Configuration macOS
-        if os.name == 'posix' and 'darwin' in os.uname().sysname.lower():
-            os.environ["MPV_RENDER_API_TYPE"] = "sw"
-            os.environ["MPV_MACOS_FORCE_DEDICATED_GPU"] = "1"
-            os.environ["XDG_RUNTIME_DIR"] = "/tmp/runtime-$USER"
         
         # Frame conteneur avec gestion stricte de la géométrie
-        self.container = tk.Frame(root, width=width, height=height, bg='black')
+        self.container = tk.Frame(parent, width=width, height=height, bg='black')
         self.container.place(x=x, y=y)
-        self.container.pack_propagate(False)
-        self.container.grid_propagate(False)
-        
-        # Attendre que le conteneur soit prêt
-        self.root.update_idletasks()
         self.container.update()
         
-        # Configuration MPV simplifiée
+        log("self.container.winfo_id(): " + str(self.container.winfo_id()))
+
+        # Configuration MPV minimale pour mode embarqué
         self.player = MPV(
-            wid=str(self.container.winfo_id()),
-            vo='gl',
+            wid=str(self.container.winfo_id()),  # Utiliser le container et non la fenêtre root
+            # vo='gpu',
             hwdec='auto',
-            log_handler=log if verbose else None,
-            input_default_bindings=True,
-            osc=True,
-            keep_open=False,
-            force_window=False,
-            video_unscaled=False,
-            keepaspect=True
+            input_vo_keyboard=True,  # Ne pas désactiver les contrôles clavier, c'est important
+            osc=True,  # Ne pas désactiver l'interface utilisateur, c'est important
+            fullscreen=False
         )
         
         # Démarrer la lecture
