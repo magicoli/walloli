@@ -21,7 +21,7 @@ class VideoPlayer:
     def __init__(self, root, video_path, x, y, width, height):
         self.root = root
         self.video_path = video_path
-        self.canvas = tk.Canvas(root, width=width, height=height)
+        self.canvas = tk.Canvas(root, width=width, height=height, bg='black')
         self.canvas.place(x=x, y=y)
         self.frame_image = None
         self.running = True
@@ -70,7 +70,7 @@ class VideoPlayer:
             img = Image.frombytes("RGB", img.get_size(), bytes(img.to_bytearray()[0]))
             img = self.fit_image_to_slot(img)
             self.frame_image = ImageTk.PhotoImage(img)
-            self.canvas.create_image(0, 0, anchor="nw", image=self.frame_image)
+            self.canvas.create_image(self.width // 2, self.height // 2, anchor="center", image=self.frame_image)
 
         # Continue updating frames
         self.root.after(10, self.update_frame)
