@@ -107,32 +107,70 @@ class VideoPlayer(QtWidgets.QFrame):
         self.player.set_media(media)
         self.player.play()
 
-class MainWindow(QtWidgets.QWidget):
+class MainWindow(QtWidgets.QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
         self.is_fullscreen = False  # État du plein écran
 
-    def keyPressEvent(self, event):
+        # Créer le widget central
+        self.central_widget = QtWidgets.QWidget()
+        self.setCentralWidget(self.central_widget)
+
+        # Créer la mise en page
+        self.layout = QtWidgets.QVBoxLayout(self.central_widget)
+
+        # Créer les actions
+        self.create_actions()
+        # Créer le menu "View"
+        self.create_menu()
+
+    def create_actions(self):
+        log("Plateforme: " + sys.platform)
+
         if sys.platform == 'darwin':
-            modifier = QtCore.Qt.MetaModifier
-            cmd_pressed = event.modifiers() & QtCore.Qt.MetaModifier
-            if cmd_pressed and event.key() == QtCore.Qt.Key_F:
-                self.toggle_fullscreen()
-            elif cmd_pressed and event.key() == QtCore.Qt.Key_W:
-                self.close()
+            # macOS
+            self.toggle_fullscreen_action = QtWidgets.QAction("Basculer en Plein Écran", self)
+            self.toggle_fullscreen_action.setShortcut(QtGui.QKeySequence("Ctrl+F"))
+            self.toggle_fullscreen_action.triggered.connect(self.toggle_fullscreen)
+
+            self.close_action = QtWidgets.QAction("Fermer la Fenêtre", self)
+            self.close_action.setShortcut(QtGui.QKeySequence("Ctrl+W"))
+            self.close_action.triggered.connect(self.close)
         else:
-            if event.key() == QtCore.Qt.Key_F11:
-                self.toggle_fullscreen()
-            elif event.key() == QtCore.Qt.Key_Escape:
-                if self.is_fullscreen:
-                    self.showNormal()
-                    self.is_fullscreen = False
-            elif (event.modifiers() & QtCore.Qt.ControlModifier) and event.key() == QtCore.Qt.Key_F:
-                self.toggle_fullscreen()
-            elif (event.modifiers() & QtCore.Qt.ControlModifier) and event.key() == QtCore.Qt.Key_W:
-                self.close()
-        super(MainWindow, self).keyPressEvent(event)
+            # Windows/Linux
+            self.toggle_fullscreen_action = QtWidgets.QAction("Basculer en Plein Écran", self)
+            self.toggle_fullscreen_action.setShortcut(QtGui.QKeySequence("F11"))
+            self.toggle_fullscreen_action.triggered.connect(self.toggle_fullscreen)
+
+            self.toggle_fullscreen_alt_action = QtWidgets.QAction("Basculer en Plein Écran (Ctrl+F)", self)
+            self.toggle_fullscreen_alt_action.setShortcut(QtGui.QKeySequence("Ctrl+F"))
+            self.toggle_fullscreen_alt_action.triggered.connect(self.toggle_fullscreen)
+
+            self.exit_fullscreen_action = QtWidgets.QAction("Quitter le Plein Écran", self)
+            self.exit_fullscreen_action.setShortcut(QtGui.QKeySequence("Escape"))
+            self.exit_fullscreen_action.triggered.connect(self.exit_fullscreen)
+
+            self.close_action = QtWidgets.QAction("Fermer la Fenêtre", self)
+            self.close_action.setShortcut(QtGui.QKeySequence("Ctrl+W"))
+            self.close_action.triggered.connect(self.close)
+
+        # Ajouter les actions à la fenêtre
+        self.addAction(self.toggle_fullscreen_action)
+        if not sys.platform == 'darwin':
+            self.addAction(self.toggle_fullscreen_alt_action)
+            self.addAction(self.exit_fullscreen_action)
+        self.addAction(self.close_action)
+
+    def create_menu(self):
+        # Créer un menu "View"
+        menubar = self.menuBar()
+        view_menu = menubar.addMenu("View")
+        view_menu.addAction(self.toggle_fullscreen_action)
+        if not sys.platform == 'darwin':
+            view_menu.addAction(self.toggle_fullscreen_alt_action)
+            view_menu.addAction(self.exit_fullscreen_action)
+        view_menu.addAction(self.close_action)
 
     def toggle_fullscreen(self):
         if self.isFullScreen():
@@ -142,6 +180,12 @@ class MainWindow(QtWidgets.QWidget):
             self.showFullScreen()
             self.is_fullscreen = True
         log(f"Plein écran {'activé' if self.is_fullscreen else 'désactivé'}")
+
+    def exit_fullscreen(self):
+        if self.is_fullscreen:
+            self.showNormal()
+            self.is_fullscreen = False
+            log("Plein écran désactivé")
 
 def create_windows_and_players(screens, slots, video_paths):
     windows = []
