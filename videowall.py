@@ -10,14 +10,26 @@ import time
 from itertools import cycle
 import threading  # Pour gérer les threads si nécessaire
 
-# This test script is intended to find a way to display several videos in a single window
-#
-# This script is supposed to be multiplatform, even if it's developed on macOS
-# Do not suggest solutions for macOS only, unless it's a macOS-specific issue
-# Do not remove developer's comments
+"""
+This application is intended to display multiple videos on multiple screens in a single window.
+It uses VLC to play the videos and PyQt5 for the GUI.
 
-# La fonction de log fonctionne parfaitement, ne la changez pas, ne la supprimez pas.
+The application is designed to be cross-platform, but some features may not work on all platforms.
+"""
+
+# Reminder for devs and AI: do not remove developer's comments
+
 def log(message, *args):
+    """
+    Log a message to the console with optional arguments.
+
+    Args:
+        message: The message to log.
+        *args: Optional arguments to format the message.
+
+    Returns:
+        None
+    """
     if verbose:
         script_name = os.path.basename(__file__)
         if args:
@@ -26,8 +38,14 @@ def log(message, *args):
 
 def find_vlc_lib():
     """
-    Recherche le chemin de la bibliothèque libvlccore en fonction du système d'exploitation.
-    Retourne le chemin complet si trouvé, sinon None.
+    Find the path to the libvlccore library based on the operating system.
+    Returns the full path if found, otherwise None.
+
+    Returns:
+        str: The path to the libvlcc if found, otherwise None.
+
+    Raises:
+        SystemExit: If VLC is not installed or libvlccore is not found.
     """
     if sys.platform.startswith('darwin'):
         # Chemins courants pour VLC sur macOS
@@ -54,31 +72,53 @@ def find_vlc_lib():
     for path in vlc_paths:
         if os.path.exists(path):
             return path
-    return None
 
-# Vérifier la présence de VLC
-vlc_lib_path = find_vlc_lib()
-
-if not vlc_lib_path:
     log("VLC n'est pas installé ou libvlccore n'a pas été trouvé.")
     log("Veuillez installer VLC depuis https://www.videolan.org/vlc/download-macosx.html")
     sys.exit(1)
-# else:
-#     # Optionnel : Ajouter le chemin de la bibliothèque VLC aux variables d'environnement
-#     vlc_lib_dir = os.path.dirname(vlc_lib_path)
-#     os.environ['PATH'] = vlc_lib_dir + os.pathsep + os.environ.get('PATH', '')
-#     os.environ['PYTHON_VLC_LIB_PATH'] = vlc_lib_dir
 
-# Maintenant que VLC est vérifié, importer le module vlc
+# Import VLC and PyQt5 modules
+vlc_lib_path = find_vlc_lib()
 import vlc
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtCore import pyqtSignal
 
 class VideoPlayer(QtWidgets.QFrame):
-    # Définir un signal PyQt pour indiquer que la vidéo est terminée
+    """
+    A class to represent a video player widget using VLC.
+
+    Attributes:
+        playlist: A cycle iterator for the video playlist.
+        current_media: The current media being played.
+        video_path: The path to the current video file.
+
+    Methods:
+        play_next_video: Play the next video in the playlist.
+        on_end_reached: Handle the end of the video playback.
+        mousePressEvent: Handle mouse press events on the video player.
+        keyPressEvent: Capture specific key events and send related commands to the video player.
+    """
+
+    # Define a signal for when the video has finished playing
     video_finished = pyqtSignal()
 
     def __init__(self, playlist, parent=None, width=300, height=200, color=None, volume=40):
+        """
+        Initialize the video player with a playlist of video paths.
+
+        Args:
+            playlist: A list of video paths to play.
+            parent: The parent widget for the video player.
+            width: The width of the video player.
+            height: The height of the video player.
+            color: The background color of the video player.
+            volume: The volume level for the video player.
+
+        Raises:
+            Exception: If VLC fails to initialize.
+        """
+        # TODO: fix exception not raised in some cases (e.g. invalid video file)
+
         super(VideoPlayer, self).__init__(parent)
         self.playlist = cycle(playlist)  # Cycle infini sur la playlist
         self.current_media = None
@@ -133,6 +173,12 @@ class VideoPlayer(QtWidgets.QFrame):
         self.play_next_video()
 
     def play_next_video(self):
+        """
+        Play the next video in the playlist.
+
+        Raises:
+            StopIteration: If the playlist is exhausted.
+        """
         try:
             self.video_path = next(self.playlist)
             if not os.path.exists(self.video_path):
@@ -175,16 +221,33 @@ class VideoPlayer(QtWidgets.QFrame):
             log(f"Exception dans play_next_video: {e}")
 
     def on_end_reached(self, event):
+        """
+        Handle the end of the video playback.
+        Emmit the video_finished signal to play the next video.
+
+        Args:
+            event: The event object.
+        """
         log(f"Vidéo terminée: {self.video_path}")
-        # Émettre le signal pour appeler play_next_video dans le thread principal
         self.video_finished.emit()
     
     def mousePressEvent(self, event):
-        # Lorsque le player est cliqué, il reçoit le focus
+        """
+        Handle mouse press events on the video player.
+
+        Args:
+            event: The mouse press event.
+        """
         self.setFocus()
         super(VideoPlayer, self).mousePressEvent(event)
     
     def keyPressEvent(self, event):
+        """
+        Capture specific key events and send related commands to the video player.
+
+        Args:
+            event: The key press event.
+        """
         # Gérer les événements clavier spécifiques
         if event.key() == QtCore.Qt.Key_Space:
             if self.player.is_playing():
@@ -200,7 +263,28 @@ class VideoPlayer(QtWidgets.QFrame):
             super(VideoPlayer, self).keyPressEvent(event)
 
 class WallWindow(QtWidgets.QWidget):
+    """
+    A custom window class to display the video wall.
+
+    Attributes:
+        toggle_fs (QtWidgets.QShortcut): Shortcut for toggling fullscreen mode (Ctrl+F).
+        exit_fs (QtWidgets.QShortcut): Shortcut for exiting fullscreen mode (Esc).
+        close_shortcut (QtWidgets.QShortcut): Shortcut for closing the window (Ctrl+W).
+        toggle_fs2 (QtWidgets.QShortcut): Additional shortcut for toggling fullscreen on Windows/Linux (F11).
+
+    Methods:
+        toggle_fullscreen: Toggle the window between fullscreen and normal size.
+        exit_fullscreen: Exit fullscreen mode if active
+    """
+
     def __init__(self, *args, **kwargs):
+        """
+        Initialize the WallWindow with the specified arguments and keyword arguments.
+        
+        Parameters:
+            *args: Command-line arguments.
+            **kwargs: Additional keyword arguments.
+        """
         super(WallWindow, self).__init__(*args, **kwargs)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
 
@@ -224,16 +308,33 @@ class WallWindow(QtWidgets.QWidget):
             toggle_fs2.activated.connect(self.toggle_fullscreen)
 
     def toggle_fullscreen(self):
+        """
+        Toggle the window between fullscreen and normal size.
+        """
         if self.isFullScreen():
             self.showNormal()
         else:
             self.showFullScreen()
 
     def exit_fullscreen(self):
+        """
+        Exit fullscreen mode if active.
+        """
         if self.isFullScreen():
             self.showNormal()
 
 def prevent_sleep():
+    """
+    Prevent the computer from going to sleep while the application is running.
+    
+    Implements OS-specific methods to inhibit sleep:
+        - macOS: Uses 'caffeinate' in the background.
+        - Windows: Utilizes SetThreadExecutionState API via ctypes.
+        - Linux: Employs 'systemd-inhibit' to block idle/sleep modes.
+    
+    Returns:
+        None
+    """
     if sys.platform == 'darwin':
         # macOS : utiliser 'caffeinate' en arrière-plan
         def run_caffeinate():
@@ -268,22 +369,33 @@ def prevent_sleep():
         log("Prévention de la mise en veille non prise en charge sur ce système.")
 
 def create_windows_and_players(screens, slots, video_paths, volume=40):
+    """
+    Create required windows and build the video players grid.
+    
+    Args:
+        screens (list of tuples): List of screen resolutions and positions. Each tuple contains (resolution, x, y).
+        slots (list of tuples): List of slots with position and size for each player. Each tuple contains (screen_index, slot_x, slot_y, slot_width, slot_height).
+        video_paths (list of str): List of video paths to play.
+        volume (int, optional): The volume level for the players. Defaults to 40.
+    
+    Returns:
+        list of WallWindow: A list of created window instances.
+    """
     windows = []
     total_slots = len(slots)
     slot_index = 0
 
-    # Mélanger globalement les vidéos
+    # Shuffle the video paths to distribute them randomly
     random.shuffle(video_paths)
 
-    # Distribuer les vidéos aux players sans duplication
+    # Distribute the videos to the players without duplicates
+    # Players will use itertools.cycle to repeat videos if necessary
     players_playlists = [[] for _ in range(total_slots)]
     for i, video in enumerate(video_paths):
         players_playlists[i % total_slots].append(video)
-    
-    # Si les vidéos sont insuffisantes, certains players auront des listes plus courtes
-    # Les VideoPlayers utiliseront itertools.cycle pour répéter les vidéos si nécessaire
 
     for screen_index, screen in enumerate(screens):
+        # Create a window for each screen
         # Créer une fenêtre personnalisée pour chaque écran
         window = WallWindow()
         window.setWindowTitle("Videowall")  # Définir le titre de la fenêtre
@@ -293,26 +405,26 @@ def create_windows_and_players(screens, slots, video_paths, volume=40):
         window.showFullScreen()  # Ouvrir en plein écran par défaut
         windows.append(window)
 
-        # Liste des slots pour cet écran
+        # Build slots
         screen_slots = [slot for slot in slots if slot[0] == screen_index]
         log(f"Screen {screen_index} slots: {screen_slots}")
         for slot in screen_slots:
             _, slot_x, slot_y, slot_width, slot_height = slot
 
-            # Calculer la position relative au sein de la fenêtre
+            # Calculate the relative position within the window
             relative_x = slot_x - x
             relative_y = slot_y - y
 
-            # Assigner la playlist au player
+            # Assign a playlist to the player based on the slot index
             if slot_index < total_slots:
                 playlist = players_playlists[slot_index]
             else:
                 playlist = video_paths  # Fallback si insuffisance
 
-            # Calculate a color, with hue based on the slot index and saturation/value fixed
-            color = QtGui.QColor.fromHsvF(0, 0, 0)
+            # Color for the player background
+            color = color = QtGui.QColor("black")
 
-            # Créer un player pour chaque slot avec taille dynamique
+            # Build the player
             log(f"Adding player {slot_index} in screen {screen_index} slot at ({relative_x}, {relative_y}) {slot_width}x{slot_height} with color {color.name()}")
             player = VideoPlayer(playlist, window, slot_width, slot_height, color, volume=volume)
             player.setGeometry(relative_x, relative_y, slot_width, slot_height)  # Positionnement correct
@@ -323,6 +435,16 @@ def create_windows_and_players(screens, slots, video_paths, volume=40):
     return windows
 
 def find_videos(directory, days=None):
+    """
+    Find video files in the specified directory.
+    
+    Args:
+        directory (str): The directory to search for video files.
+        days (int, optional): The number of days to look back for videos. If None, all videos are considered.
+    
+    Returns:
+        list of str: A list of paths to found video files.
+    """
     log("Finding videos in directory " + os.path.abspath(directory))
 
     directory = os.path.abspath(directory)
@@ -351,6 +473,18 @@ def find_videos(directory, days=None):
     return videos
 
 def get_screens(screen_number=None):
+    """
+    Get the available screens and their resolutions.
+    
+    Args:
+        screen_number (int, optional): The screen number to return, user-friendly (starting from 1). If None, all screens are returned.
+    
+    Returns:
+        list of tuples: A list of screens where each screen is represented as (resolution, x, y).
+    
+    Raises:
+        SystemExit: If the provided screen_number is invalid.
+    """
     screens = []
     if os.name == 'posix' and 'darwin' in os.uname().sysname.lower():
         # macOS
@@ -380,9 +514,6 @@ def get_screens(screen_number=None):
                 screens.append((res.split('+')[0], x, y))
     
     screens.sort(key=lambda screen: (screen[1], screen[2]))
-    # result: [('1920x1080', 0, 0), ('1920x1080', 1920, 0), ('1920x1080', -1920, 0)]
-    # They should be sorted by position
-    # Then if args.screen is specified, return only that screen, otherwise return all screens
     if screen_number is not None:
         if 1 <= screen_number <= len(screens):
             screens = [screens[screen_number - 1]]
@@ -393,8 +524,18 @@ def get_screens(screen_number=None):
     return screens
 
 def get_slots(video_paths, screens, args):
+    """
+    Calculate the slots needed based on the number of screens and videos.
+    
+    Args:
+        video_paths (list of str): A list of video paths to play.
+        screens (list of tuples): A list of screen resolutions and positions.
+        args (argparse.Namespace): The command-line arguments.
+    
+    Returns:
+        list of tuples: A list of slots where each slot is represented as (screen_index, slot_x, slot_y, slot_width, slot_height).
+    """
     log("Initializing windows and players")
-    #  (one per screen aka monitor aka display) and players (one or more players per window)")
 
     log(f"Total screens: {screens}")
 
@@ -518,6 +659,18 @@ def get_slots(video_paths, screens, args):
     return slots
 
 def valid_volume(value):
+    """
+    Validate the volume argument as an integer between 0 and 200.
+    
+    Args:
+        value (str): The volume value to validate.
+    
+    Returns:
+        int: The validated volume level.
+    
+    Raises:
+        argparse.ArgumentTypeError: If the volume is not an integer or not within the valid range.
+    """
     try:
         ivalue = int(value)
     except ValueError:
@@ -528,6 +681,22 @@ def valid_volume(value):
     return ivalue
 
 def main():
+    """
+    Main function to run the video wall application.
+    
+    Performs the following steps:
+        1. Prevents the computer from going to sleep.
+        2. Initializes the QApplication.
+        3. Parses command-line arguments.
+        4. Searches for video files in the specified directories.
+        5. Retrieves available screens.
+        6. Calculates slots based on screens and videos.
+        7. Creates windows and video players.
+        8. Starts the Qt event loop.
+    
+    Returns:
+        None
+    """
     global verbose
     verbose = False
 
