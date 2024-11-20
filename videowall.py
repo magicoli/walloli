@@ -3,10 +3,12 @@ import os
 import subprocess
 import re
 import argparse
+import ctypes  # Pour Windows
 from math import ceil, sqrt
 import random
 import time
 from itertools import cycle
+import threading  # Pour gérer les threads si nécessaire
 
 # This test script is intended to find a way to display several videos in a single window
 #
@@ -230,6 +232,40 @@ class MainWindow(QtWidgets.QWidget):
     def exit_fullscreen(self):
         if self.isFullScreen():
             self.showNormal()
+
+def prevent_sleep():
+    if sys.platform == 'darwin':
+        # macOS : utiliser 'caffeinate' en arrière-plan
+        def run_caffeinate():
+            subprocess.call(['caffeinate', '-dimsu'])
+        threading.Thread(target=run_caffeinate, daemon=True).start()
+        log("Prévention de la mise en veille sur macOS avec 'caffeinate'")
+    elif sys.platform == 'win32':
+        # Windows : utiliser SetThreadExecutionState
+        import ctypes
+        ES_CONTINUOUS = 0x80000000
+        ES_SYSTEM_REQUIRED = 0x00000001
+        ES_DISPLAY_REQUIRED = 0x00000002
+        ctypes.windll.kernel32.SetThreadExecutionState(
+            ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED)
+        log("Prévention de la mise en veille sur Windows avec SetThreadExecutionState")
+    elif sys.platform.startswith('linux'):
+        # Linux : utiliser 'systemd-inhibit' en arrière-plan
+        def inhibit_sleep():
+            try:
+                subprocess.call([
+                    'systemd-inhibit',
+                    '--what=idle:sleep',
+                    '--why=VideoWall Running',
+                    '--mode=block',
+                    'bash', '-c', 'while true; do sleep 60; done'
+                ])
+            except Exception as e:
+                log(f"Erreur lors de l'appel à systemd-inhibit : {e}")
+        threading.Thread(target=inhibit_sleep, daemon=True).start()
+        log("Prévention de la mise en veille sur Linux avec 'systemd-inhibit'")
+    else:
+        log("Prévention de la mise en veille non prise en charge sur ce système.")
 
 def create_windows_and_players(screens, slots, video_paths, volume=40):
     windows = []
@@ -494,6 +530,9 @@ def valid_volume(value):
 def main():
     global verbose
     verbose = False
+
+    # Prévenir la mise en veille de l'ordinateur
+    prevent_sleep()
 
     # Initialiser QApplication avant de créer des widgets
     app = QtWidgets.QApplication(sys.argv)
