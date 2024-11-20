@@ -70,8 +70,12 @@ if not vlc_lib_path:
 # Maintenant que VLC est vérifié, importer le module vlc
 import vlc
 from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5.QtCore import pyqtSignal
 
 class VideoPlayer(QtWidgets.QFrame):
+    # Définir un signal PyQt pour indiquer que la vidéo est terminée
+    video_finished = pyqtSignal()
+
     def __init__(self, playlist, parent=None, width=300, height=200, color=None):
         super(VideoPlayer, self).__init__(parent)
         self.playlist = cycle(playlist)  # Cycle infini sur la playlist
@@ -108,9 +112,12 @@ class VideoPlayer(QtWidgets.QFrame):
         elif sys.platform == "darwin":  # pour macOS
             self.player.set_nsobject(int(self.video_widget.winId()))
         
-        # Connecter l'événement de fin de lecture
+        # Connecter l'événement de fin de lecture à la méthode on_end_reached
         events = self.player.event_manager()
         events.event_attach(vlc.EventType.MediaPlayerEndReached, self.on_end_reached)
+
+        # Connecter le signal video_finished au slot play_next_video
+        self.video_finished.connect(self.play_next_video)
 
         # Démarrer la première vidéo
         self.play_next_video()
@@ -127,11 +134,13 @@ class VideoPlayer(QtWidgets.QFrame):
 
             # Arrêter le lecteur avant de charger une nouvelle vidéo
             self.player.stop()
+            log("Lecteur VLC arrêté.")
             time.sleep(0.1)  # Petit délai pour assurer l'arrêt complet
 
             # Charger le nouveau média
             media = self.instance.media_new(self.video_path)
             self.player.set_media(media)
+            log(f"Média chargé: {self.video_path}")
 
             # Configurer les entrées vidéo
             self.player.video_set_key_input(True)
@@ -139,20 +148,24 @@ class VideoPlayer(QtWidgets.QFrame):
 
             # Démarrer la lecture
             self.player.play()
-            log(f"Lecture de {self.video_path}")
+            log(f"Lecture de {self.video_path} en cours...")
 
             # Vérifier si la lecture a commencé
             state = self.player.get_state()
+            log(f"État du lecteur après play(): {state}")
             if state == vlc.State.Error:
                 log(f"Erreur de lecture pour {self.video_path}")
                 self.play_next_video()  # Passer à la vidéo suivante en cas d'erreur
 
         except StopIteration:
             log("Fin de la playlist.")
-    
+        except Exception as e:
+            log(f"Exception dans play_next_video: {e}")
+
     def on_end_reached(self, event):
         log(f"Vidéo terminée: {self.video_path}")
-        self.play_next_video()
+        # Émettre le signal pour appeler play_next_video dans le thread principal
+        self.video_finished.emit()
     
     def mousePressEvent(self, event):
         # Lorsque le player est cliqué, il reçoit le focus
