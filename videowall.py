@@ -76,7 +76,7 @@ class VideoPlayer(QtWidgets.QFrame):
     # Définir un signal PyQt pour indiquer que la vidéo est terminée
     video_finished = pyqtSignal()
 
-    def __init__(self, playlist, parent=None, width=300, height=200, color=None):
+    def __init__(self, playlist, parent=None, width=300, height=200, color=None, volume=40):
         super(VideoPlayer, self).__init__(parent)
         self.playlist = cycle(playlist)  # Cycle infini sur la playlist
         self.current_media = None
@@ -119,9 +119,12 @@ class VideoPlayer(QtWidgets.QFrame):
         # Connecter le signal video_finished au slot play_next_video
         self.video_finished.connect(self.play_next_video)
 
+        # Définir le volume
+        self.player.audio_set_volume(volume)
+
         # Démarrer la première vidéo
         self.play_next_video()
-    
+
     def play_next_video(self):
         try:
             self.video_path = next(self.playlist)
@@ -135,7 +138,6 @@ class VideoPlayer(QtWidgets.QFrame):
             # Arrêter le lecteur avant de charger une nouvelle vidéo
             self.player.stop()
             log("Lecteur VLC arrêté.")
-            time.sleep(0.1)  # Petit délai pour assurer l'arrêt complet
 
             # Charger le nouveau média
             media = self.instance.media_new(self.video_path)
@@ -145,6 +147,9 @@ class VideoPlayer(QtWidgets.QFrame):
             # Configurer les entrées vidéo
             self.player.video_set_key_input(True)
             self.player.video_set_mouse_input(True)
+
+            # Définir le volume à chaque chargement
+            self.player.audio_set_volume(self.player.audio_get_volume())
 
             # Démarrer la lecture
             self.player.play()
@@ -221,7 +226,7 @@ class MainWindow(QtWidgets.QWidget):
         if self.isFullScreen():
             self.showNormal()
 
-def create_windows_and_players(screens, slots, video_paths):
+def create_windows_and_players(screens, slots, video_paths, volume=40):
     windows = []
     total_slots = len(slots)
     slot_index = 0
@@ -265,12 +270,11 @@ def create_windows_and_players(screens, slots, video_paths):
                 playlist = video_paths  # Fallback si insuffisance
 
             # Calculate a color, with hue based on the slot index and saturation/value fixed
-            hue = (360 / total_slots * slot_index) % 360
-            color = QtGui.QColor.fromHsvF(hue / 360, 1, 1)
+            color = QtGui.QColor.fromHsvF(0, 0, 0)
 
             # Créer un player pour chaque slot avec taille dynamique
             log(f"Adding player {slot_index} in screen {screen_index} slot at ({relative_x}, {relative_y}) {slot_width}x{slot_height} with color {color.name()}")
-            player = VideoPlayer(playlist, window, slot_width, slot_height, color)
+            player = VideoPlayer(playlist, window, slot_width, slot_height, color, volume=volume)
             player.setGeometry(relative_x, relative_y, slot_width, slot_height)  # Positionnement correct
             player.show()
 
@@ -514,7 +518,7 @@ def main():
     slots = get_slots(video_paths, screens, args)
     log("slots: " + str(slots))
 
-    windows = create_windows_and_players(screens, slots, video_paths)
+    windows = create_windows_and_players(screens, slots, video_paths, volume=args.volume)
     log("Windows: " + str(windows))
 
     # Lancer la boucle principale de PyQt
