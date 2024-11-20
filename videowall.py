@@ -16,11 +16,11 @@ from itertools import cycle
 
 # La fonction de log fonctionne parfaitement, ne la changez pas, ne la supprimez pas.
 def log(message, *args):
-    # if verbose:
-    script_name = os.path.basename(__file__)
-    if args:
-        message += " " + " ".join(str(arg) for arg in args).rstrip()
-    print(f"{script_name}: {message}")
+    if verbose:
+        script_name = os.path.basename(__file__)
+        if args:
+            message += " " + " ".join(str(arg) for arg in args).rstrip()
+        print(f"{script_name}: {message}")
 
 def find_vlc_lib():
     """
@@ -233,7 +233,6 @@ def create_windows_and_players(screens, slots, video_paths, volume=40):
 
     # Mélanger globalement les vidéos
     random.shuffle(video_paths)
-    log("Shuffled video_paths:", video_paths)
 
     # Distribuer les vidéos aux players sans duplication
     players_playlists = [[] for _ in range(total_slots)]
@@ -306,7 +305,7 @@ def find_videos(directory, days=None):
     video_extensions = re.compile(r'.*\.(avi|mp4|webm|m4v|mkv|wmv|mov|mpe?g)(\.part)?$', re.IGNORECASE)
     videos = [file for file in files if video_extensions.match(os.path.basename(file)) and not os.path.basename(file).startswith('.')]
 
-    log("Found videos:\n" + "\n".join(videos))
+    log(f"Found {len(videos)} video(s)")
 
     return videos
 
