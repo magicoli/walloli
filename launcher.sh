@@ -40,6 +40,8 @@ end() {
     exit $exit_code
 }
 
+cd $(dirname "$0")
+
 log "Activating virtual environment"
 # make sure ven_dir is an absolute path
 venv_dir="$(cd "$(dirname "$venv_dir")" && pwd)/$(basename "$venv_dir")" || exit $?
