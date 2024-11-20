@@ -6,6 +6,7 @@ import argparse
 from math import ceil, sqrt
 import random
 import time
+from itertools import cycle
 
 # This test script is intended to find a way to display several videos in a single window
 #
@@ -71,9 +72,12 @@ import vlc
 from PyQt5 import QtWidgets, QtCore, QtGui
 
 class VideoPlayer(QtWidgets.QFrame):
-    def __init__(self, video_path, parent=None, width=300, height=200, color=None):
+    def __init__(self, playlist, parent=None, width=300, height=200, color=None):
         super(VideoPlayer, self).__init__(parent)
-        self.video_path = video_path
+        self.playlist = cycle(playlist)  # Cycle infini sur la playlist
+        self.current_media = None
+        self.video_path = None
+
         self.setStyleSheet("background-color: black;")
         self.setGeometry(0, 0, width, height)  # Définir la taille selon le slot
 
@@ -82,11 +86,6 @@ class VideoPlayer(QtWidgets.QFrame):
         
         # Autoriser le focus
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
-
-        # Vérifiez si le fichier vidéo existe
-        if not os.path.exists(self.video_path):
-            log(f"Fichier vidéo non trouvé: {self.video_path}")
-            return
 
         # Créer un widget pour le rendu vidéo
         self.video_widget = QtWidgets.QFrame(self)
@@ -108,13 +107,36 @@ class VideoPlayer(QtWidgets.QFrame):
             self.player.set_hwnd(self.video_widget.winId())
         elif sys.platform == "darwin":  # pour macOS
             self.player.set_nsobject(int(self.video_widget.winId()))
+        
+        # Connecter l'événement de fin de lecture
+        events = self.player.event_manager()
+        events.event_attach(vlc.EventType.MediaPlayerEndReached, self.on_end_reached)
 
-        # Charger et jouer le média
-        media = self.instance.media_new(self.video_path)
-        self.player.set_media(media)
-        self.player.video_set_key_input(True)
-        self.player.video_set_mouse_input(True)
-        self.player.play()
+        # Démarrer la première vidéo
+        self.play_next_video()
+    
+    def play_next_video(self):
+        try:
+            self.video_path = next(self.playlist)
+            if not os.path.exists(self.video_path):
+                log(f"Fichier vidéo non trouvé: {self.video_path}")
+                self.play_next_video()  # Passer à la vidéo suivante
+                return
+
+            log(f"Playing next video: {self.video_path}")
+            # Charger et jouer le média
+            media = self.instance.media_new(self.video_path)
+            self.player.set_media(media)
+            self.player.video_set_key_input(True)
+            self.player.video_set_mouse_input(True)
+            self.player.play()
+            log(f"Lecture de {self.video_path}")
+        except StopIteration:
+            log("Fin de la playlist.")
+    
+    def on_end_reached(self, event):
+        log(f"Vidéo terminée: {self.video_path}")
+        self.play_next_video()
     
     def mousePressEvent(self, event):
         # Lorsque le player est cliqué, il reçoit le focus
@@ -135,7 +157,6 @@ class VideoPlayer(QtWidgets.QFrame):
             log(f"Arrêt de {self.video_path}")
         else:
             super(VideoPlayer, self).keyPressEvent(event)
-
 
 class MainWindow(QtWidgets.QWidget):
     def __init__(self, *args, **kwargs):
@@ -175,6 +196,19 @@ def create_windows_and_players(screens, slots, video_paths):
     windows = []
     total_slots = len(slots)
     slot_index = 0
+
+    # Mélanger globalement les vidéos
+    random.shuffle(video_paths)
+    log("Shuffled video_paths:", video_paths)
+
+    # Distribuer les vidéos aux players sans duplication
+    players_playlists = [[] for _ in range(total_slots)]
+    for i, video in enumerate(video_paths):
+        players_playlists[i % total_slots].append(video)
+    
+    # Si les vidéos sont insuffisantes, certains players auront des listes plus courtes
+    # Les VideoPlayers utiliseront itertools.cycle pour répéter les vidéos si nécessaire
+
     for screen_index, screen in enumerate(screens):
         # Créer une fenêtre personnalisée pour chaque écran
         window = MainWindow()
@@ -195,16 +229,19 @@ def create_windows_and_players(screens, slots, video_paths):
             relative_x = slot_x - x
             relative_y = slot_y - y
 
-            # Sélectionner une vidéo aléatoire ou séquentielle
-            video_path = random.choice(video_paths)
+            # Assigner la playlist au player
+            if slot_index < total_slots:
+                playlist = players_playlists[slot_index]
+            else:
+                playlist = video_paths  # Fallback si insuffisance
 
             # Calculate a color, with hue based on the slot index and saturation/value fixed
             hue = (360 / total_slots * slot_index) % 360
             color = QtGui.QColor.fromHsvF(hue / 360, 1, 1)
 
             # Créer un player pour chaque slot avec taille dynamique
-            log (f"adding player in screen {screen_index} slot {slot_index} at ({relative_x}, {relative_y}) {slot_width}x{slot_height} with color {color.name()}")
-            player = VideoPlayer(video_path, window, slot_width, slot_height, color)
+            log(f"Adding player {slot_index} in screen {screen_index} slot at ({relative_x}, {relative_y}) {slot_width}x{slot_height} with color {color.name()}")
+            player = VideoPlayer(playlist, window, slot_width, slot_height, color)
             player.setGeometry(relative_x, relative_y, slot_width, slot_height)  # Positionnement correct
             player.show()
 
@@ -222,7 +259,12 @@ def find_videos(directory, days=None):
         command.extend(['-mtime', f'-{days}'])
 
     log("Running command: " + ' '.join(command))
-    result = subprocess.run(command, capture_output=True, text=True)
+    try:
+        result = subprocess.run(command, capture_output=True, text=True, check=True)
+    except subprocess.CalledProcessError as e:
+        log(f"Erreur lors de l'exécution de la commande find: {e}")
+        sys.exit(1)
+
     # log("Command output: " + result.stdout)
 
     files = result.stdout.splitlines()
@@ -294,9 +336,11 @@ def get_slots(video_paths, screens, args):
         min_players = args.total_number
     elif args.number:
         log(f"Requested videos per screen: {args.number}")
-        min_players = len(screens) * args.number
+        min_players = min(len(screens) * args.number, videos_count)
     else:
-        min_players = len(screens) # one player per screen by default
+        min_players = len(screens)  # one player per screen by default
+
+    min_players = min(min_players, videos_count)
 
     if args.max:
         # set total players to minimum value between args.max, args.number and len(video_paths)
@@ -307,8 +351,6 @@ def get_slots(video_paths, screens, args):
     else:
         args.max = args.number if args.number else min_players
 
-    log(f"Min players: {min_players}")
-    
     # Calculate actual best fit for slots. Divide each screen into slots by x,y
     min_slots_per_screen = ceil(min_players / len(screens))
     optimized_slots_per_screen = ceil(sqrt(min_slots_per_screen)) ** 2
@@ -339,11 +381,11 @@ def get_slots(video_paths, screens, args):
 
     empty_slots = 0
     if args.total_number is not None:
-        empty_slots = total_slots - args.total_number
+        empty_slots = max(total_slots - args.total_number, 0)
         log(f"Total number of players requested: {args.total_number}, empty slots: {empty_slots}")
     else:
         log(f"No total number of players requested, empty slots: {empty_slots}")
-        empty_slots = total_slots - min_players
+        empty_slots = max(total_slots - min_players, 0)
 
     for screen in screens:
         ignore_slots = set()  # Initialiser pour chaque écran
@@ -359,10 +401,10 @@ def get_slots(video_paths, screens, args):
         # Calculer les empty_slots pour cet écran
         if args.total_number:
             empty_slots_screen = empty_slots
-        elif args.number: # if number is set, manage per screen to distribute evenly
-            empty_slots_screen = slots_per_screen - args.number
+        elif args.number:  # if number is set, manage per screen to distribute evenly
+            empty_slots_screen = slots_per_screen - min(args.number, videos_count)
         else:
-            empty_slots_screen = 0 # dunno why it was = slots_per_screen - 1  # Par défaut 1 slot par écran
+            empty_slots_screen = 0  # Par défaut 0 slot vide
 
         log(f"  Empty slots for this screen: {empty_slots_screen}")
 
@@ -383,14 +425,14 @@ def get_slots(video_paths, screens, args):
                     ignore_slots.add((row + 1, col))
                     current_slot_height *= 2
                     empty_slots_screen -= 1
-                    empty_slots -= 1
+                    empty_slots = max(empty_slots - 1, 0)
                     if empty_slots_screen >= 2 and col < cols - 1:
                         log(f"{empty_slots_screen} empty slots left and two slots are available aside")
                         ignore_slots.add((row, col + 1))
                         ignore_slots.add((row + 1, col + 1))
                         current_slot_width *= 2
                         empty_slots_screen -= 2
-                        empty_slots -= 2
+                        empty_slots = max(empty_slots - 2, 0)
 
                 # Assigner le slot
                 slots.append((screen_index, slot_x, slot_y, current_slot_width, current_slot_height))
@@ -400,8 +442,8 @@ def get_slots(video_paths, screens, args):
         screen_index +=1
 
     log("Slots: " + str(slots))
-    # exit(0) # DEBUG
     return slots
+
 def main():
     global verbose
     verbose = False
@@ -411,7 +453,7 @@ def main():
 
     parser = argparse.ArgumentParser(description="Video Wall")
     parser.add_argument('-n', '--number', type=int, default=1, help='Number of players per screen')
-    parser.add_argument('-N', '--total-number', type=int, default=None, help='Total number of players per screen, preceeds -n')
+    parser.add_argument('-N', '--total-number', type=int, default=None, help='Total number of players, overrides -n')
     parser.add_argument('-d', '--days', type=int, help='Number of days to look back for videos')
     parser.add_argument('-m', '--max', type=int, help='Maximum number of videos to play')
     parser.add_argument('-p', '--panscan', type=float, default=0, help='Panscan value')
