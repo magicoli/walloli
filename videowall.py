@@ -96,9 +96,14 @@ class VideoPlayer(QtWidgets.QFrame):
         self.video_widget.setGeometry(0, 0, width, height)
         self.video_widget.setStyleSheet("background-color: black;")
 
-        # Instance VLC
+        # Préparer les arguments pour VLC en fonction du mode verbose
+        vlc_args = []
+        if not verbose:
+            vlc_args.append('--quiet')  # Suppression des messages VLC
+
+        # Instance VLC avec les arguments appropriés
         try:
-            self.instance = vlc.Instance()
+            self.instance = vlc.Instance(*vlc_args)
             self.player = self.instance.media_player_new()
         except Exception as e:
             log(f"Erreur lors de l'initialisation de VLC: {e}")
