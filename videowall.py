@@ -477,6 +477,16 @@ def get_slots(video_paths, screens, args):
     log("Slots: " + str(slots))
     return slots
 
+def valid_volume(value):
+    try:
+        ivalue = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Volume must be an integer, received {value}.")
+
+    if ivalue < 0 or ivalue > 200:
+        raise argparse.ArgumentTypeError(f"Volume must be between 0 and 200 (less than 100 recommended), received {ivalue}.")
+    return ivalue
+
 def main():
     global verbose
     verbose = False
@@ -491,7 +501,7 @@ def main():
     parser.add_argument('-m', '--max', type=int, help='Maximum number of videos to play')
     parser.add_argument('-p', '--panscan', type=float, default=0, help='Panscan value')
     parser.add_argument('-s', '--screen', type=int, help='Screen number')
-    parser.add_argument('-V', '--volume', type=int, default=40, help='Volume level')
+    parser.add_argument('-V', '--volume', type=valid_volume, default=20, help='Volume level (0-100)')
     parser.add_argument('-b', '--bestfit', action='store_true', help='Try to fit the best number of players on the screens')
     parser.add_argument('-k', '--kill', action='store_true', help='Kill existing video players')
     parser.add_argument('-l', '--singleloop', action='store_true', help='Single loop mode')
