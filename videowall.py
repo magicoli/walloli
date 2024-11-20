@@ -119,18 +119,34 @@ class VideoPlayer(QtWidgets.QFrame):
         try:
             self.video_path = next(self.playlist)
             if not os.path.exists(self.video_path):
-                log(f"Fichier vidéo non trouvé: {self.video_path}")
+                log(f"File not found, skipping {self.video_path}")
                 self.play_next_video()  # Passer à la vidéo suivante
                 return
 
             log(f"Playing next video: {self.video_path}")
-            # Charger et jouer le média
+
+            # Arrêter le lecteur avant de charger une nouvelle vidéo
+            self.player.stop()
+            time.sleep(0.1)  # Petit délai pour assurer l'arrêt complet
+
+            # Charger le nouveau média
             media = self.instance.media_new(self.video_path)
             self.player.set_media(media)
+
+            # Configurer les entrées vidéo
             self.player.video_set_key_input(True)
             self.player.video_set_mouse_input(True)
+
+            # Démarrer la lecture
             self.player.play()
             log(f"Lecture de {self.video_path}")
+
+            # Vérifier si la lecture a commencé
+            state = self.player.get_state()
+            if state == vlc.State.Error:
+                log(f"Erreur de lecture pour {self.video_path}")
+                self.play_next_video()  # Passer à la vidéo suivante en cas d'erreur
+
         except StopIteration:
             log("Fin de la playlist.")
     
