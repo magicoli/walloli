@@ -199,9 +199,9 @@ class VideoPlayer(QtWidgets.QFrame):
         else:
             super(VideoPlayer, self).keyPressEvent(event)
 
-class MainWindow(QtWidgets.QWidget):
+class WallWindow(QtWidgets.QWidget):
     def __init__(self, *args, **kwargs):
-        super(MainWindow, self).__init__(*args, **kwargs)
+        super(WallWindow, self).__init__(*args, **kwargs)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
 
         # Définir les raccourcis clavier
@@ -285,7 +285,7 @@ def create_windows_and_players(screens, slots, video_paths, volume=40):
 
     for screen_index, screen in enumerate(screens):
         # Créer une fenêtre personnalisée pour chaque écran
-        window = MainWindow()
+        window = WallWindow()
         window.setWindowTitle("Videowall")  # Définir le titre de la fenêtre
         res, x, y = screen
         width, height = map(int, res.split('x'))
