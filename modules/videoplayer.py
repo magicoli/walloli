@@ -1,10 +1,10 @@
-# Import VLC and PyQt5 modules
+# videoplayer.py
 
 import os
 import sys
 from itertools import cycle
-from PyQt5 import QtWidgets, QtCore
-from PyQt5.QtCore import pyqtSignal
+from PyQt5 import QtWidgets, QtCore, QtGui
+from PyQt5.QtCore import pyqtSignal, QTimer
 import vlc
 
 import _config as config
@@ -18,12 +18,6 @@ class VideoPlayer(QtWidgets.QFrame):
         playlist: A cycle iterator for the video playlist.
         current_media: The current media being played.
         video_path: The path to the current video file.
-
-    Methods:
-        play_next_video: Play the next video in the playlist.
-        on_end_reached: Handle the end of the video playback.
-        mousePressEvent: Handle mouse press events on the video player.
-        keyPressEvent: Capture specific key events and send related commands to the video player.
     """
 
     # Define a signal for when the video has finished playing
@@ -40,37 +34,31 @@ class VideoPlayer(QtWidgets.QFrame):
             height: The height of the video player.
             color: The background color of the video player.
             volume: The volume level for the video player.
-
-        Raises:
-            Exception: If VLC fails to initialize.
         """
-        # TODO: fix exception not raised in some cases (e.g. invalid video file)
-
         super(VideoPlayer, self).__init__(parent)
-        self.playlist = cycle(playlist)  # Cycle infini sur la playlist
+        self.playlist = cycle(playlist)  # Infinite cycle over the playlist
         self.current_media = None
         self.video_path = None
 
         self.setStyleSheet("background-color: black;")
-        self.setGeometry(0, 0, width, height)  # Définir la taille selon le slot
+        self.setGeometry(0, 0, width, height)  # Set size according to the slot
 
         if color is not None:        
             self.setStyleSheet(f"background-color: {color.name()}; border: solid 5px {color.name()};")
         
-        # Autoriser le focus
+        # Enable focus
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
 
-        # Créer un widget pour le rendu vidéo
+        # Create a widget for video rendering
         self.video_widget = QtWidgets.QFrame(self)
         self.video_widget.setGeometry(0, 0, width, height)
         self.video_widget.setStyleSheet("background-color: black;")
 
-        # Préparer les arguments pour VLC en fonction du mode verbose
+        # Prepare VLC arguments based on verbose mode and panscan
         vlc_args = []
         if not config.verbose:
-            vlc_args.append('--quiet')  # Suppression des messages VLC
+            vlc_args.append('--quiet')  # Suppress VLC messages
 
-        # Instance VLC avec les arguments appropriés
         try:
             self.instance = vlc.Instance(*vlc_args)
             self.player = self.instance.media_player_new()
@@ -78,38 +66,53 @@ class VideoPlayer(QtWidgets.QFrame):
             log(f"Error initializing VLC: {e}")
             return
 
-        # Configuration du rendu vidéo selon le système d'exploitation
-        if config.is_mac:  # pour macOS  
+        # Configure video output based on the operating system
+        if config.is_mac:
             self.player.set_nsobject(int(self.video_widget.winId()))
-        elif config.is_linux:  # pour Linux
+        elif config.is_linux:
             self.player.set_xwindow(self.video_widget.winId())
-        elif config.is_windows:  # pour Windows
+        elif config.is_windows:
             self.player.set_hwnd(self.video_widget.winId())
         
-        # Connecter l'événement de fin de lecture à la méthode on_end_reached
+        # Connect the end of media event to the handler
         events = self.player.event_manager()
         events.event_attach(vlc.EventType.MediaPlayerEndReached, self.on_end_reached)
+        
+        # Connect the playing event to apply_panscan
+        events.event_attach(vlc.EventType.MediaPlayerPlaying, self.on_playing)
 
-        # Connecter le signal video_finished au slot play_next_video
+        # Connect the video_finished signal to play_next_video slot
         self.video_finished.connect(self.play_next_video)
 
-        # Définir le volume
+        # Set the volume
         self.player.audio_set_volume(volume)
 
-        # Démarrer la première vidéo
+        # Start the first video
         self.play_next_video()
+
+    def on_playing(self, event):
+        """
+        Handle the MediaPlayerPlaying event.
+        Apply panscan once the video starts playing.
+        
+        Args:
+            event: The event object.
+        """
+        self.apply_panscan()
 
     def play_next_video(self):
         """
         Play the next video in the playlist.
-
-        Raises:
-            StopIteration: If the playlist is exhausted.
         """
-        self.video_path = next(self.playlist)
+        try:
+            self.video_path = next(self.playlist)
+        except StopIteration:
+            log("Playlist is exhausted")
+            return
+
         if not os.path.exists(self.video_path):
             log(f"File not found, skipping {self.video_path}")
-            self.play_next_video()  # Passer à la vidéo suivante
+            self.play_next_video()  # Skip to the next video
             return
 
         log(f"Playing next video: {self.video_path}")
@@ -123,23 +126,17 @@ class VideoPlayer(QtWidgets.QFrame):
             self.player.audio_set_volume(self.player.audio_get_volume())
             self.player.play()
             log(f"Playing video: {self.video_path}")
-        except StopIteration:
-            log("Playlist is exhausted")
         except Exception as e:
             log(f"Error playing {self.video_path}: {e}")
+            self.play_next_video()  # Skip to the next video in case of error
 
-        # Vérifier si la lecture a commencé
-        state = self.player.get_state()
-        log(f"Player state: {state}")
-        if state == vlc.State.Error:
-            log(f"Error playing {self.video_path}")
-            self.play_next_video()  # Skip to the next video
-
+        # Removed QTimer.singleShot as we now use the event
+        # QTimer.singleShot(200, self.apply_panscan)
 
     def on_end_reached(self, event):
         """
         Handle the end of the video playback.
-        Emmit the video_finished signal to play the next video.
+        Emit the video_finished signal to play the next video.
 
         Args:
             event: The event object.
@@ -164,7 +161,7 @@ class VideoPlayer(QtWidgets.QFrame):
         Args:
             event: The key press event.
         """
-        # Gérer les événements clavier spécifiques
+        # Handle specific key events
         if event.key() == QtCore.Qt.Key_Space:
             if self.player.is_playing():
                 self.player.pause()
@@ -177,3 +174,60 @@ class VideoPlayer(QtWidgets.QFrame):
             log(f"Video stopped {self.video_path}")
         else:
             super(VideoPlayer, self).keyPressEvent(event)
+
+    def apply_panscan(self):
+        """
+        Adjust the video scale based on the panscan value from config.
+
+        Panscan Values:
+            - 0 : Fit (scale video to fit the entire widget)
+            - 1 : Fill (scale video to fill the widget, cropping excess)
+            - 0 < panscan < 1 : Partial cropping
+
+        Returns:
+            None
+        """
+        panscan = getattr(config, 'panscan', 0)
+        panscan = max(0, min(1, panscan))  # Clamp between 0 and 1
+
+        video_width = self.player.video_get_width()
+        video_height = self.player.video_get_height()
+
+        if video_width == 0 or video_height == 0:
+            log("Unable to retrieve video dimensions.")
+            return  # Cannot proceed without video dimensions
+
+        widget_width = self.video_widget.width() + 2
+        widget_height = self.video_widget.height() + 2
+
+        # Calculate scale factors
+        scale_fit = min(widget_width / video_width, widget_height / video_height)
+        scale_fill = max(widget_width / video_width, widget_height / video_height)
+
+        # Calculate the final scale based on panscan
+        if panscan == 0:
+            # Utiliser 0.0 pour laisser VLC gérer l'échelle automatiquement (fit)
+            scale_factor = 0.0
+        elif panscan == 1:
+            scale_factor = scale_fill
+        else:
+            scale_factor = (scale_fill - scale_fit) * panscan + scale_fit
+
+        # Appliquer le facteur d'échelle
+        if panscan == 0:
+            self.player.video_set_scale(scale_factor)  # 0.0 pour auto
+        else:
+            # Pour éviter les arrondis, utiliser un nombre précis
+            self.player.video_set_scale(scale_factor)
+
+        log(f"Panscan applied: panscan={panscan}, scale_factor={scale_factor}")
+
+    def resizeEvent(self, event):
+        """
+        Handle the resize event to reapply panscan.
+
+        Args:
+            event: The resize event.
+        """
+        super(VideoPlayer, self).resizeEvent(event)
+        self.apply_panscan()

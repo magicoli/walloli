@@ -6,6 +6,7 @@
 
 verbose = False     # Default value for verbose mode
 volume = 50         # Default value for the volume level
+panscan = 0         # Default value for the panscan value (crop video)
 
 platform = None     # Initial value for the platform name
 is_mac = False      # Initial value for macOS platform
