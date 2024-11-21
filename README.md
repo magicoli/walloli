@@ -10,9 +10,11 @@ Cross-platform video wall player, play multiple videos across one or multiple sc
 ## Description
 
 **WallOli** is a cross-platform tool designed to display a grid of videos across one or multiple screens. Leveraging **VLC** for video playback, this application ensures smooth and synchronized video presentations.
+
 ## Features
 
-- **Multiple Video Playback**: Simultaneously play multiple videos.
+- **Multiple Video Playback**: Simultaneously play multiple videos in random order from one or multiple folders.
+- **Optimized shuffle**: Ensure that no video appears more than once at the same time in the grid.
 - **Multi-screen support** Can be set to play on a single screen or across different screens.
 - **Wide Format Support**: Compatible with common video formats such as AVI, MP4, MKV, and more.
 - **Sleep Prevention**: Prevents the computer from sleeping while the application is running.
