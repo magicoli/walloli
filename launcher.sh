@@ -35,8 +35,6 @@ end() {
         log "Error $exit_code"
     fi
 
-    # Désactiver l'environnement virtuel
-
     exit $exit_code
 }
 
@@ -47,7 +45,7 @@ log "Activating virtual environment"
 venv_dir="$(cd "$(dirname "$venv_dir")" && pwd)/$(basename "$venv_dir")" || exit $?
 timestamp_file="$venv_dir/.last_checked"
 
-# Détecter le système d'exploitation
+# Detect the operating system
 OS="$(uname -s)"
 case "$OS" in
     Linux*)     OS=Linux;;
@@ -56,16 +54,12 @@ case "$OS" in
     *)          OS="UNKNOWN"
 esac
 
-# Créer un environnement virtuel s'il n'existe pas
+# Create the virtual environment if it does not exist
 if [ ! -d "$venv_dir" ]; then
-    # if [ "$OS" = "Mac" ]; then
-    #     python3 -m venv "$venv_dir" --system-site-packages
-    # else
-        python3 -m venv "$venv_dir"
-    # fi
+    python3 -m venv "$venv_dir"
 fi
 
-# Activer l'environnement virtuel
+# Activate the virtual environment
 source "$venv_dir/bin/activate" || end $? "Failed to activate virtual environment in $venv_dir"
 if [[ "$(which python)" != "$venv_dir/bin/python" ]]; then
   end 1 "Virtual environement is active but Python binary $(which python)
@@ -73,30 +67,24 @@ if [[ "$(which python)" != "$venv_dir/bin/python" ]]; then
 Delete the venv directory and run the script again."
 fi
 
-# Vérifier les dépendances si elles n'ont pas été vérifiées depuis plus de 6 heures
-if [ ! -f "$timestamp_file" ] || [ $(find "$timestamp_file" -mmin +360) ]; then
+# Check dependencies if not checked in the last 7 days
+if [ ! -f "$timestamp_file" ] || [ $(find "$timestamp_file" -mmin +10080) ]; then
+    old_debug=$DEBUG
+    DEBUG=true
     log "Check dependencies"
-    
-    # Vérifier si Tkinter est installé en premier
-    python -c "import tkinter" 2>/dev/null || end $? "Tkinter is required to run this script.
 
-    - macos:    brew install python-tk
-    - linux:    sudo apt-get update && sudo apt-get install python3-tk -y
-    - windows:  idk&idc
-
-    After installing it, delete the directory $venv_dir before running the script again"
-
-    # Si Tkinter est OK, procéder aux installations pip
     pip install --upgrade pip || end $? "Failed to upgrade pip"
     
-    pip install python-mpv \
+    pip install python-vlc \
+    && pip install PyQt5 \
     || end $? "Failed to install $_"
 
     touch "$timestamp_file"
+    DEBUG=$old_debug
 else
     log "Skip dependency check"
 fi
 
-# Exécuter le script Python
+# Launch the main script
 log "Launch main script"
-python "$basedir/videowall.py" "$@"
+python "$basedir/main.py" "$@"

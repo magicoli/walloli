@@ -357,7 +357,7 @@ def prevent_sleep():
                 subprocess.call([
                     'systemd-inhibit',
                     '--what=idle:sleep',
-                    '--why=VideoWall Running',
+                    '--why=WallOli Running',
                     '--mode=block',
                     'bash', '-c', 'while true; do sleep 60; done'
                 ])

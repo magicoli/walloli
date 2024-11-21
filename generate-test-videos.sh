@@ -4,7 +4,7 @@
 [ "$1" -eq "$1" ] 2>/dev/ && TOTAL_VIDEOS=$1 && shift || TOTAL_VIDEOS=10
 
 # Répertoire de sortie pour les vidéos générées
-OUTPUT_DIR="tests"
+OUTPUT_DIR="test_videos"
 mkdir -p "$OUTPUT_DIR"
 
 # Répertoire temporaire pour les images
