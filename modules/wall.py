@@ -1,4 +1,4 @@
-# modules/wallwindow.py - Module pour créer une fenêtre personnalisée pour le mur vidéo.
+# modules/wall.py - Module to create custom windows and build the wall.
 
 import sys
 import random

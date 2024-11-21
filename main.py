@@ -6,7 +6,7 @@ import argparse
 from PyQt5 import QtWidgets
 
 import _config as config
-from modules.wallwindow import WallWindow, create_windows_and_players
+from modules.wall import WallWindow, create_windows_and_players
 from modules.slots import get_screens, get_slots
 from modules.utils import log, prevent_sleep, valid_volume, find_videos, validate_os, validate_vlc_lib
 from modules.videoplayer import VideoPlayer
