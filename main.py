@@ -47,7 +47,7 @@ def main():
     parser.add_argument('-m', '--max', type=int, help='Maximum number of videos to play')
     parser.add_argument('-p', '--panscan', type=float, default=0, help='Panscan value')
     parser.add_argument('-s', '--screen', type=int, help='Screen number')
-    parser.add_argument('-V', '--volume', type=valid_volume, default=20, help='Volume level (0-100)')
+    parser.add_argument('-V', '--volume', type=valid_volume, default=config.volume, help='Volume level (0-100)')
     parser.add_argument('-b', '--bestfit', action='store_true', help='Try to fit the best number of players on the screens')
     parser.add_argument('-k', '--kill', action='store_true', help='Kill existing video players')
     parser.add_argument('-l', '--singleloop', action='store_true', help='Single loop mode')

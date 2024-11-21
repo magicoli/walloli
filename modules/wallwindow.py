@@ -70,7 +70,7 @@ class WallWindow(QtWidgets.QWidget):
         if self.isFullScreen():
             self.showNormal()
 
-def create_windows_and_players(screens, slots, video_paths, volume=40):
+def create_windows_and_players(screens, slots, video_paths, volume=config.volume):
     """
     Create required windows and build the video players grid.
     
