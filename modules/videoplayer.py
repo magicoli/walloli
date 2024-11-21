@@ -130,9 +130,6 @@ class VideoPlayer(QtWidgets.QFrame):
             log(f"Error playing {self.video_path}: {e}")
             self.play_next_video()  # Skip to the next video in case of error
 
-        # Removed QTimer.singleShot as we now use the event
-        # QTimer.singleShot(200, self.apply_panscan)
-
     def on_end_reached(self, event):
         """
         Handle the end of the video playback.
@@ -197,8 +194,9 @@ class VideoPlayer(QtWidgets.QFrame):
             log("Unable to retrieve video dimensions.")
             return  # Cannot proceed without video dimensions
 
-        widget_width = self.video_widget.width() + 2
-        widget_height = self.video_widget.height() + 2
+        PAD_PIXELS = 2  # Extra pixels to avoid rounding issues
+        widget_width = self.video_widget.width() + PAD_PIXELS
+        widget_height = self.video_widget.height() + PAD_PIXELS
 
         # Calculate scale factors
         scale_fit = min(widget_width / video_width, widget_height / video_height)
@@ -214,11 +212,7 @@ class VideoPlayer(QtWidgets.QFrame):
             scale_factor = (scale_fill - scale_fit) * panscan + scale_fit
 
         # Appliquer le facteur d'échelle
-        if panscan == 0:
-            self.player.video_set_scale(scale_factor)  # 0.0 pour auto
-        else:
-            # Pour éviter les arrondis, utiliser un nombre précis
-            self.player.video_set_scale(scale_factor)
+        self.player.video_set_scale(scale_factor)
 
         log(f"Panscan applied: panscan={panscan}, scale_factor={scale_factor}")
 
