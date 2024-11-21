@@ -56,10 +56,24 @@ def main():
     parser.add_argument('directories', nargs='+', help='Directories to search for videos')
     args = parser.parse_args()
 
-    if os.getenv('DEBUG') == 'true' or args.verbose:
-        # set global variable verbose to true
+    # Define list of arguments to map to config variables
+    config_args_mapping = {
+        'verbose': 'verbose',
+        'volume': 'volume',
+        'panscan': 'panscan',
+    }
+
+    # Map command-line arguments to config variables
+    for arg_key, config_key in config_args_mapping.items():
+        arg_value = getattr(args, arg_key, None)
+        if arg_value is not None:
+            setattr(config, config_key, arg_value)
+
+    if os.getenv('DEBUG') == 'true':
+        # Override if DEBUG environment variable is set
         config.verbose = True
 
+    # Process directories and find videos
     video_paths = []
     for directory in args.directories:
         video_paths.extend(find_videos(directory, args.days))
