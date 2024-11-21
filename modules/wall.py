@@ -1,4 +1,4 @@
-# modules/wall.py - Module to create custom windows and build the wall.
+# modules/wall.py - Module to build the wall and windows.
 
 import sys
 import random
@@ -20,7 +20,7 @@ class WallWindow(QtWidgets.QWidget):
 
     Methods:
         toggle_fullscreen: Toggle the window between fullscreen and normal size.
-        exit_fullscreen: Exit fullscreen mode if active
+        exit_fullscreen: Exit fullscreen mode if active.
     """
 
     def __init__(self, *args, **kwargs):
@@ -34,7 +34,7 @@ class WallWindow(QtWidgets.QWidget):
         super(WallWindow, self).__init__(*args, **kwargs)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
 
-        # Définir les raccourcis clavier
+        # Define keyboard shortcuts
         toggle_fs_seq = QtGui.QKeySequence("Ctrl+F")
         toggle_fs = QtWidgets.QShortcut(toggle_fs_seq, self)
         toggle_fs.activated.connect(self.toggle_fullscreen)
