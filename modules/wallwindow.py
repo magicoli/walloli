@@ -4,6 +4,7 @@ import sys
 import random
 from PyQt5 import QtWidgets, QtCore, QtGui
 
+import _config as config
 from modules.videoplayer import VideoPlayer
 from modules.utils import log
 
@@ -46,8 +47,9 @@ class WallWindow(QtWidgets.QWidget):
         close_shortcut = QtWidgets.QShortcut(close_seq, self)
         close_shortcut.activated.connect(self.close)
 
-        if sys.platform != 'darwin':
-            # Windows/Linux
+        if not config.is_mac:
+            # We don't want to interfere with Mission Control on macOS
+            # F11 is standard for fullscreen on Windows and Linux
             toggle_fs_seq2 = QtGui.QKeySequence("F11")
             toggle_fs2 = QtWidgets.QShortcut(toggle_fs_seq2, self)
             toggle_fs2.activated.connect(self.toggle_fullscreen)

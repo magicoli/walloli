@@ -8,6 +8,7 @@ import re
 import subprocess
 from math import ceil, sqrt
 
+import _config as config
 from modules.utils import log
 
 def get_screens(screen_number=None):
@@ -24,11 +25,12 @@ def get_screens(screen_number=None):
         SystemExit: If the provided screen_number is invalid.
     """
     screens = []
-    if os.name == 'posix' and 'darwin' in os.uname().sysname.lower():
-        # if not shutil.which('displayplacer'):
-        #     log("Erreur: 'displayplacer' n'est pas installé sur ce système.")
-        #     exit(1)
+    if config.is_mac:
         # macOS
+
+        # if not shutil.which('displayplacer'):
+        #     log("Error: 'displayplacer' is not installed on this system.")
+        #     exit(1)
         result = subprocess.run(['displayplacer', 'list'], capture_output=True, text=True)
         for line in result.stdout.splitlines():
             if 'Resolution:' in line:
@@ -37,14 +39,7 @@ def get_screens(screen_number=None):
                 origin = line.split(': ')[1].replace('(', '').replace(')', '').split(' ')[0]
                 x, y = origin.split(',')
                 screens.append((res, int(x), int(y)))
-    elif os.name == 'nt':
-        # Windows
-        result = subprocess.run(['wmic', 'path', 'Win32_VideoController', 'get', 'VideoModeDescription'], capture_output=True, text=True)
-        for line in result.stdout.splitlines():
-            if 'x' in line:
-                res = line.strip()
-                screens.append((res, 0, 0))
-    else:
+    elif config.is_linux:
         # Linux
         # if not shutil.which('xrandr'):
         #     log("Erreur: 'xrandr' n'est pas installé sur ce système.")
@@ -56,6 +51,13 @@ def get_screens(screen_number=None):
                 res = parts[2]
                 x, y = map(int, res.split('+')[1:])
                 screens.append((res.split('+')[0], x, y))
+    elif config.is_windows:
+        # Windows
+        result = subprocess.run(['wmic', 'path', 'Win32_VideoController', 'get', 'VideoModeDescription'], capture_output=True, text=True)
+        for line in result.stdout.splitlines():
+            if 'x' in line:
+                res = line.strip()
+                screens.append((res, 0, 0))
     
     screens.sort(key=lambda screen: (screen[1], screen[2]))
     if screen_number is not None:

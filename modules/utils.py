@@ -1,12 +1,13 @@
 # utils.py - This module contains utility functions for logging, argument validation, and system-specific operations.
 
-import _config as config
 import sys
 import os
 import subprocess
 import re
 import argparse
 import threading
+
+import _config as config
 
 def log(message, *args):
     """
@@ -24,6 +25,30 @@ def log(message, *args):
         if args:
             message += " " + " ".join(str(arg) for arg in args).rstrip()
         print(f"{script_name}: {message}")
+
+def validate_os():
+    """
+    Validate the operating system and set the platform variable in the config module.
+
+    Returns:
+        None
+
+    Raises:
+        SystemExit: If the operating system is not supported.
+    """
+    if sys.platform == 'darwin':
+        config.platform = 'macOS'
+        config.is_mac = True
+    elif sys.platform == 'win32':
+        config.platform = 'Windows'
+        config.is_windows = True
+    elif sys.platform.startswith('linux'):
+        config.platform = 'Linux'
+        config.is_linux = True
+    else:
+        # Exit if platform is not supported
+        print(f"Your platform {sys.platform} is not supported or could not be detected.")
+        sys.exit(1)
 
 def valid_volume(value):
     """
@@ -71,7 +96,7 @@ def find_videos(directory, days=None):
     try:
         result = subprocess.run(command, capture_output=True, text=True, check=True)
     except subprocess.CalledProcessError as e:
-        log(f"Erreur lors de l'exécution de la commande find: {e}")
+        log(f"Error running find command: {e}")
         sys.exit(1)
 
     # log("Command output: " + result.stdout)
@@ -99,25 +124,26 @@ def prevent_sleep():
         None
     """
 
-    if sys.platform == 'darwin':
+    if config.is_mac:
         # macOS : use 'caffeinate' in the background
         # TODO: make sure caffeinate is a standard command on macOS, try to use a standard alternative otherwise
+        log("Prevent sleep on macOS with 'caffeinate'")
         def run_caffeinate():
             subprocess.call(['caffeinate', '-dimsu'])
         threading.Thread(target=run_caffeinate, daemon=True).start()
-        log("Prévention de la mise en veille sur macOS avec 'caffeinate'")
-    elif sys.platform == 'win32':
+    elif config.is_windows:
         # Windows : utiliser SetThreadExecutionState
+        log("Prevent sleep on Windows with SetThreadExecutionState")
         import ctypes
         ES_CONTINUOUS = 0x80000000
         ES_SYSTEM_REQUIRED = 0x00000001
         ES_DISPLAY_REQUIRED = 0x00000002
         ctypes.windll.kernel32.SetThreadExecutionState(
             ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED)
-        log("Prévention de la mise en veille sur Windows avec SetThreadExecutionState")
-    elif sys.platform.startswith('linux'):
+    elif config.is_linux:
         # Linux : use 'systemd-inhibit' in the background
         # TODO: make sure systemd-inhibit is available on the system
+        log("Prevent sleep on Linux with 'systemd-inhibit'")
         def inhibit_sleep():
             try:
                 subprocess.call([
@@ -128,13 +154,13 @@ def prevent_sleep():
                     'bash', '-c', 'while true; do sleep 60; done'
                 ])
             except Exception as e:
-                log(f"Erreur lors de l'appel à systemd-inhibit : {e}")
+                log(f"Error running systemd-inhibit: {e}")
         threading.Thread(target=inhibit_sleep, daemon=True).start()
-        log("Prévention de la mise en veille sur Linux avec 'systemd-inhibit'")
     else:
-        log("Prévention de la mise en veille non prise en charge sur ce système.")
+        log("Prevent sleep Error: Unsupported platform")
+        exit(1)
 
-def find_vlc_lib():
+def validate_vlc_lib():
     """
     Find the path to the libvlccore library based on the operating system.
     Returns the full path if found, otherwise None.
@@ -145,31 +171,33 @@ def find_vlc_lib():
     Raises:
         SystemExit: If VLC is not installed or libvlccore is not found.
     """
-    if sys.platform.startswith('darwin'):
+    if config.is_mac:
         # Chemins courants pour VLC sur macOS
         vlc_paths = [
             "/Applications/VLC.app/Contents/MacOS/lib/libvlccore.dylib",
             "/Applications/VLC.app/Contents/MacOS/lib/libvlccore.9.dylib",  # Adapter selon la version
         ]
-    elif sys.platform.startswith('linux'):
+    elif config.is_windows:
+        # Chemins courants pour VLC sur Windows
+        vlc_paths = [
+            "C:\\Program Files\\VideoLAN\\VLC\\libvlccore.dll",
+            "C:\\Program Files (x86)\\VideoLAN\\VLC\\libvlccore.dll",
+        ]
+    # elif config.is_linux:
+    else:
         # Chemins courants pour VLC sur Linux
         vlc_paths = [
             "/usr/lib/libvlccore.so",
             "/usr/local/lib/libvlccore.so",
             "/snap/vlc/current/lib/libvlccore.so",  # Pour les installations via snap
         ]
-    elif sys.platform == "win32":
-        # Chemins courants pour VLC sur Windows
-        vlc_paths = [
-            "C:\\Program Files\\VideoLAN\\VLC\\libvlccore.dll",
-            "C:\\Program Files (x86)\\VideoLAN\\VLC\\libvlccore.dll",
-        ]
-    else:
-        vlc_paths = []
+    # else:
+    #     vlc_paths = []
     
     for path in vlc_paths:
         if os.path.exists(path):
-            return path
+            config.vlc_lib_path = path
+            return
 
     log("VLC n'est pas installé ou libvlccore n'a pas été trouvé.")
     log("Veuillez installer VLC depuis https://www.videolan.org/vlc/download-macosx.html")

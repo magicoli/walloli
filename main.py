@@ -1,4 +1,5 @@
 # main.py
+
 import sys
 import os
 import argparse
@@ -7,8 +8,8 @@ from PyQt5 import QtWidgets
 import _config as config
 from modules.wallwindow import WallWindow, create_windows_and_players
 from modules.slots import get_screens, get_slots
+from modules.utils import log, prevent_sleep, valid_volume, find_videos, validate_os, validate_vlc_lib
 from modules.videoplayer import VideoPlayer
-from modules.utils import log, prevent_sleep, valid_volume, find_videos
 
 def main():
     """
@@ -27,12 +28,18 @@ def main():
     Returns:
         None
     """
-    # Prévenir la mise en veille de l'ordinateur
+
+    # Check os and die if not supported
+    validate_os()
+    validate_vlc_lib()
+
+    # Prevent computer from going to sleep
     prevent_sleep()
 
-    # Initialiser QApplication avant de créer des widgets
+    # Initialize the QApplication before creating any widgets
     app = QtWidgets.QApplication(sys.argv)
 
+    # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Video Wall")
     parser.add_argument('-n', '--number', type=int, default=1, help='Number of players per screen')
     parser.add_argument('-N', '--total-number', type=int, default=None, help='Total number of players, overrides -n')

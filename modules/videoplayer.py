@@ -1,6 +1,5 @@
 # Import VLC and PyQt5 modules
 
-import _config as config
 import os
 import sys
 from itertools import cycle
@@ -8,9 +7,8 @@ from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtCore import pyqtSignal
 import vlc
 
-from modules.utils import find_vlc_lib, log
-
-vlc_lib_path = find_vlc_lib()
+import _config as config
+from modules.utils import log
 
 class VideoPlayer(QtWidgets.QFrame):
     """
@@ -77,16 +75,16 @@ class VideoPlayer(QtWidgets.QFrame):
             self.instance = vlc.Instance(*vlc_args)
             self.player = self.instance.media_player_new()
         except Exception as e:
-            log(f"Erreur lors de l'initialisation de VLC: {e}")
+            log(f"Error initializing VLC: {e}")
             return
 
         # Configuration du rendu vidéo selon le système d'exploitation
-        if sys.platform.startswith('linux'):  # pour Linux
-            self.player.set_xwindow(self.video_widget.winId())
-        elif sys.platform == "win32":  # pour Windows
-            self.player.set_hwnd(self.video_widget.winId())
-        elif sys.platform == "darwin":  # pour macOS
+        if config.is_mac:  # pour macOS  
             self.player.set_nsobject(int(self.video_widget.winId()))
+        elif config.is_linux:  # pour Linux
+            self.player.set_xwindow(self.video_widget.winId())
+        elif config.is_windows:  # pour Windows
+            self.player.set_hwnd(self.video_widget.winId())
         
         # Connecter l'événement de fin de lecture à la méthode on_end_reached
         events = self.player.event_manager()
@@ -108,46 +106,35 @@ class VideoPlayer(QtWidgets.QFrame):
         Raises:
             StopIteration: If the playlist is exhausted.
         """
+        self.video_path = next(self.playlist)
+        if not os.path.exists(self.video_path):
+            log(f"File not found, skipping {self.video_path}")
+            self.play_next_video()  # Passer à la vidéo suivante
+            return
+
+        log(f"Playing next video: {self.video_path}")
+
         try:
-            self.video_path = next(self.playlist)
-            if not os.path.exists(self.video_path):
-                log(f"File not found, skipping {self.video_path}")
-                self.play_next_video()  # Passer à la vidéo suivante
-                return
-
-            log(f"Playing next video: {self.video_path}")
-
-            # Arrêter le lecteur avant de charger une nouvelle vidéo
             self.player.stop()
-            log("Lecteur VLC arrêté.")
-
-            # Charger le nouveau média
             media = self.instance.media_new(self.video_path)
             self.player.set_media(media)
-            log(f"Média chargé: {self.video_path}")
-
-            # Configurer les entrées vidéo
             self.player.video_set_key_input(True)
             self.player.video_set_mouse_input(True)
-
-            # Définir le volume à chaque chargement
             self.player.audio_set_volume(self.player.audio_get_volume())
-
-            # Démarrer la lecture
             self.player.play()
-            log(f"Lecture de {self.video_path} en cours...")
-
-            # Vérifier si la lecture a commencé
-            state = self.player.get_state()
-            log(f"État du lecteur après play(): {state}")
-            if state == vlc.State.Error:
-                log(f"Erreur de lecture pour {self.video_path}")
-                self.play_next_video()  # Passer à la vidéo suivante en cas d'erreur
-
+            log(f"Playing video: {self.video_path}")
         except StopIteration:
-            log("Fin de la playlist.")
+            log("Playlist is exhausted")
         except Exception as e:
-            log(f"Exception dans play_next_video: {e}")
+            log(f"Error playing {self.video_path}: {e}")
+
+        # Vérifier si la lecture a commencé
+        state = self.player.get_state()
+        log(f"Player state: {state}")
+        if state == vlc.State.Error:
+            log(f"Error playing {self.video_path}")
+            self.play_next_video()  # Skip to the next video
+
 
     def on_end_reached(self, event):
         """
@@ -157,7 +144,7 @@ class VideoPlayer(QtWidgets.QFrame):
         Args:
             event: The event object.
         """
-        log(f"Vidéo terminée: {self.video_path}")
+        log(f"Video finished: {self.video_path}")
         self.video_finished.emit()
     
     def mousePressEvent(self, event):
@@ -181,12 +168,12 @@ class VideoPlayer(QtWidgets.QFrame):
         if event.key() == QtCore.Qt.Key_Space:
             if self.player.is_playing():
                 self.player.pause()
-                log(f"Pause de {self.video_path}")
+                log(f"Video paused {self.video_path}")
             else:
                 self.player.play()
-                log(f"Lecture de {self.video_path}")
+                log(f"Video resumed {self.video_path}")
         elif event.key() == QtCore.Qt.Key_S:
             self.player.stop()
-            log(f"Arrêt de {self.video_path}")
+            log(f"Video stopped {self.video_path}")
         else:
             super(VideoPlayer, self).keyPressEvent(event)
