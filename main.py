@@ -6,7 +6,7 @@ import argparse
 from PyQt5 import QtWidgets
 
 import _config as config
-from modules.wall import WallWindow, create_windows_and_players
+from modules.wall import Wall, WallWindow
 from modules.slots import get_screens, get_slots
 from modules.utils import log, prevent_sleep, valid_volume, find_videos, validate_os, validate_vlc_lib
 from modules.videoplayer import VideoPlayer
@@ -92,9 +92,12 @@ def main():
     slots = get_slots(video_paths, screens, args)
     log("slots: " + str(slots))
 
-    windows = create_windows_and_players(screens, slots, video_paths, volume=args.volume)
-    log("Windows: " + str(windows))
+    # windows = create_windows_and_players(screens, slots, video_paths, volume=args.volume)
+    # log("Windows: " + str(windows))
 
+    wall = Wall(screens, slots, video_paths, volume=args.volume)
+    log("Wall: " + str(wall))
+    
     # Lancer la boucle principale de PyQt
     sys.exit(app.exec_())
 
