@@ -5,6 +5,7 @@
 # Use the command-line arguments to change the behavior of the program.
 
 verbose = False     # Default value for verbose mode
+background = False  # Default value for the background mode
 volume = 50         # Default value for the volume level
 panscan = 0         # Default value for the panscan value (crop video)
 
