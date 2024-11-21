@@ -141,6 +141,26 @@ class WallWindow(QtWidgets.QWidget):
             toggle_fs2 = QtWidgets.QShortcut(toggle_fs_seq2, self)
             toggle_fs2.activated.connect(self.toggle_fullscreen)
 
+        # Setup background mode if enabled
+        if config.background:
+            self.setup_background_mode()
+
+    def setup_background_mode(self):
+        # Per platform module imports
+        if config.is_mac:
+            from AppKit import NSWindow, NSApplication
+            # Specific configuration for macOS
+            # ...
+        elif config.is_windows:
+            import win32con
+            import win32gui
+            # Specific configuration for Windows
+            # ...
+        elif config.is_linux:
+            import subprocess
+            # Specific configuration for Linux
+            # ...
+
     def toggle_fullscreen(self):
         """
         Toggle the window between fullscreen and normal size.
