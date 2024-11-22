@@ -121,7 +121,16 @@ class WallWindow(QtWidgets.QWidget):
         super(WallWindow, self).__init__(*args, **kwargs)
         self.setFocusPolicy(QtCore.Qt.StrongFocus)
 
-        # Define keyboard shortcuts
+        self.setup_shortcuts()
+
+        # Setup background mode if enabled
+        if config.background:
+            self.setup_background_mode()
+
+    def setup_shortcuts(self):
+        """
+        Setup keyboard shortcuts for the window.
+        """
         toggle_fs_seq = QtGui.QKeySequence("Ctrl+F")
         toggle_fs = QtWidgets.QShortcut(toggle_fs_seq, self)
         toggle_fs.activated.connect(self.toggle_fullscreen)
@@ -140,10 +149,6 @@ class WallWindow(QtWidgets.QWidget):
             toggle_fs_seq2 = QtGui.QKeySequence("F11")
             toggle_fs2 = QtWidgets.QShortcut(toggle_fs_seq2, self)
             toggle_fs2.activated.connect(self.toggle_fullscreen)
-
-        # Setup background mode if enabled
-        if config.background:
-            self.setup_background_mode()
 
     def setup_background_mode(self):
         """
