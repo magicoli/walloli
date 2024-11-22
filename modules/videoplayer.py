@@ -98,6 +98,7 @@ class VideoPlayer(QtWidgets.QFrame):
         Args:
             event: The event object.
         """
+        # TODO: make sure there is actually a video playing, it seems to not always be the case
         self.apply_panscan()
 
     def play_next_video(self):
@@ -191,8 +192,11 @@ class VideoPlayer(QtWidgets.QFrame):
         video_height = self.player.video_get_height()
 
         if video_width == 0 or video_height == 0:
-            log("Unable to retrieve video dimensions.")
+            # TODO: not blocking but not supposed to happen: check why sometimes, the video dimensions are 0x0, it gets called again later with valid dimensions
+            log(f"Invalid video dimensions: {video_width}x{video_height}, skipping")
             return  # Cannot proceed without video dimensions
+
+        log(f"Valid video dimensions: {video_width}x{video_height}, proceeding")
 
         PAD_PIXELS = 2  # Extra pixels to avoid rounding issues
         widget_width = self.video_widget.width() + PAD_PIXELS
