@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="walloli",
-    version="0.1.0",
+    version="0.1.1-dev",
     author="Olivier van Helden",
     author_email="olivier@van-helden.net",
     description="A cross-platform video wall player",
