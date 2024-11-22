@@ -49,7 +49,6 @@ def main():
     parser.add_argument('-p', '--panscan', type=float, default=0, help='Panscan value')
     parser.add_argument('-V', '--volume', type=valid_volume, default=config.volume, help='Volume level (0-100)')
     parser.add_argument('-v', '--verbose', action='store_true', help='Verbose mode')
-    parser.add_argument('--background', action='store_true', help='Function as desktop background')
     # parser.add_argument('-m', '--monitor', action='store_true', help='Monitor changes in the directories and refresh video list (not implemented)')
     parser.add_argument('-l', '--singleloop', action='store_true', help='Single loop mode (partially implemented)')
     parser.add_argument('-m', '--max', type=int, help='Maximum number of videos in single-loop mode (partially implemented)')
@@ -62,7 +61,6 @@ def main():
     # Define list of arguments to map to config variables
     config_args_mapping = {
         'verbose': 'verbose',
-        'background': 'background',
         'volume': 'volume',
         'panscan': 'panscan',
     }
