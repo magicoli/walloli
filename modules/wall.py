@@ -146,20 +146,90 @@ class WallWindow(QtWidgets.QWidget):
             self.setup_background_mode()
 
     def setup_background_mode(self):
-        # Per platform module imports
-        if config.is_mac:
-            from AppKit import NSWindow, NSApplication
-            # Specific configuration for macOS
-            # ...
-        elif config.is_windows:
-            import win32con
-            import win32gui
-            # Specific configuration for Windows
-            # ...
-        elif config.is_linux:
-            import subprocess
-            # Specific configuration for Linux
-            # ...
+        """
+        Configure the window to act as desktop background based on the operating system.
+        """
+        log("background mode disable until fixed")
+        pass
+        # # Per platform module imports
+        # if config.is_mac:
+        #     log("Skipping for now, not working")
+        #     pass
+        #     log("Setting up background mode on macOS")
+        #     try:
+        #         from AppKit import NSWindow, NSApplication
+        #         from PyQt5.QtCore import QTimer
+
+        #         # Obtenir le handle de la fenêtre Qt
+        #         window_number = int(self.winId())
+        #         app = NSApplication.sharedApplication()
+
+        #         def set_mac_window_level():
+        #             found = False
+        #             for ns_window in app.windows():
+        #                 if ns_window.windowNumber() == window_number:
+        #                     ns_window.setLevel_(NSWindow.NSDesktopWindowLevel)
+        #                     found = True
+        #                     log(f"Set window level for window number {window_number} on macOS")
+        #                     break
+
+        #             if not found:
+        #                 log(f"No NSWindow found with window number {window_number} on macOS")
+
+        #         # Utiliser un QTimer pour retarder l'exécution
+        #         QTimer.singleShot(0, set_mac_window_level)
+        #     except ImportError:
+        #         log("pyobjc is not installed. Please install it to manage window levels on macOS.")
+        #     except Exception as e:
+        #         log(f"Error setting window level on macOS: {e}")
+
+        # elif config.is_windows:
+        #     try:
+        #         import win32con
+        #         import win32gui
+
+        #         hwnd = int(self.winId())
+
+        #         # Trouver la fenêtre 'Progman' qui représente le bureau
+        #         progman = win32gui.FindWindow("Progman", "Program Manager")
+        #         if progman:
+        #             # Définir le parent de la fenêtre Qt comme 'Progman'
+        #             win32gui.SetParent(hwnd, progman)
+        #             # Placer la fenêtre Qt derrière toutes les autres fenêtres
+        #             win32gui.SetWindowPos(hwnd, win32con.HWND_BOTTOM, 0, 0, 0, 0,
+        #                                   win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
+        #             log(f"Set window level for Windows hwnd {hwnd} to HWND_BOTTOM")
+        #     except ImportError:
+        #         log("pywin32 is not installed. Please install it to manage window levels on Windows.")
+        #     except Exception as e:
+        #         log(f"Error setting window level on Windows: {e}")
+
+        # elif config.is_linux:
+        #     try:
+        #         import subprocess
+
+        #         # Définir le type de fenêtre comme 'desktop' via wmctrl
+        #         # Assurez-vous que wmctrl est installé
+        #         # Utiliser wmctrl pour définir la fenêtre en bas
+        #         subprocess.run(["wmctrl", "-r", ":ACTIVE:", "-b", "add,below"], check=True)
+        #         # Définir le décor de la fenêtre comme 'dock' ou utiliser un gestionnaire de fenêtres compatible
+        #         log("Set window level for Linux using wmctrl")
+        #     except subprocess.CalledProcessError as e:
+        #         log(f"Error setting window level on Linux: {e}")
+        #     except FileNotFoundError:
+        #         log("wmctrl is not installed. Please install it to manage window levels on Linux.")
+        #     except Exception as e:
+        #         log(f"Unexpected error setting window level on Linux: {e}")
+
+        # # Configuration supplémentaire pour rendre la fenêtre non-interactive
+        # self.setWindowFlags(
+        #     QtCore.Qt.FramelessWindowHint |
+        #     QtCore.Qt.WindowStaysOnBottomHint |
+        #     QtCore.Qt.Tool  # Evite que la fenêtre apparaisse dans la barre des tâches
+        # )
+        # self.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents, True)
+        # self.setAttribute(QtCore.Qt.WA_NoSystemBackground, True)
+        # self.setAttribute(QtCore.Qt.WA_TranslucentBackground, True)
 
     def toggle_fullscreen(self):
         """
@@ -176,4 +246,3 @@ class WallWindow(QtWidgets.QWidget):
         """
         if self.isFullScreen():
             self.showNormal()
-
