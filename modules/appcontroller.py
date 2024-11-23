@@ -51,31 +51,18 @@ class AppController(QtWidgets.QMainWindow):
         dialog = SettingsDialog(active_window)
         dialog.setWindowModality(Qt.ApplicationModal)
         dialog.setWindowFlags(dialog.windowFlags() | Qt.WindowStaysOnTopHint)
-        
-        self.center_dialog_on_screen(dialog, active_screen)
+
+        # self.center_dialog_on_screen(dialog, active_screen)
+        screen_geometry = active_screen.geometry()
+        dialog_geometry = dialog.frameGeometry()
+        center_point = screen_geometry.center()
+        dialog_geometry.moveCenter(center_point)
+        dialog.move(dialog_geometry.topLeft())
+
         
         # Execute the dialog modally
         dialog.exec_()
         log("Settings dialog opened and closed")
-
-    def center_dialog_on_screen(self, dialog, screen):
-        """
-        Centers the dialog on the specified screen.
-        """
-        # Get the geometry of the screen
-        screen_geometry = screen.geometry()
-        
-        # Get the geometry of the dialog
-        dialog_geometry = dialog.frameGeometry()
-        
-        # Calculate the center point of the screen
-        center_point = screen_geometry.center()
-        
-        # Move the center of the dialog to the center of the screen
-        dialog_geometry.moveCenter(center_point)
-        
-        # Apply the new top-left position to the dialog
-        dialog.move(dialog_geometry.topLeft())
 
     def set_app_icon(self):
         """
