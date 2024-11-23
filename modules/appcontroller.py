@@ -6,6 +6,7 @@
 import sys
 import os
 from PyQt5 import QtWidgets, QtGui
+from PyQt5.QtCore import Qt  # Ensure Qt is imported
 
 from modules.utils import log
 from modules.settings import SettingsDialog
@@ -35,39 +36,40 @@ class AppController(QtWidgets.QMainWindow):
 
     def open_settings_dialog(self):
         """
-        Opens the settings dialog.
+        Opens the settings dialog on the screen where the active window is located.
         """
-        dialog = SettingsDialog(self)
+        active_window = QtWidgets.QApplication.activeWindow()
+        
+        # if active_window:
+        #     # Get the screen of the active window
+        #     active_screen = active_window.screen()
+        # else:
+        #     # Fallback to the primary screen if no active window is found
+        #     active_screen = QtWidgets.QApplication.primaryScreen()
+        active_screen = QtWidgets.QApplication.primaryScreen()
+        
+        # Create the SettingsDialog with the active window as parent
+        dialog = SettingsDialog(active_window)
         
         # Set the dialog modality to Application Modal
         dialog.setWindowModality(Qt.ApplicationModal)
         
-        # Ensure the dialog stays on top
-        dialog.setWindowFlags(dialog.windowFlags() | Qt.WindowStaysOnTopHint)
+        # Optional: Ensure the dialog stays on top
+        # dialog.setWindowFlags(dialog.windowFlags() | Qt.WindowStaysOnTopHint)
         
         # Center the dialog on the active screen
-        self.center_dialog_on_active_screen(dialog)
+        self.center_dialog_on_screen(dialog, active_screen)
         
         # Execute the dialog modally
         dialog.exec_()
         log("Settings dialog opened and closed")
 
-    def center_dialog_on_active_screen(self, dialog):
+    def center_dialog_on_screen(self, dialog, screen):
         """
-        Centers the dialog on the screen where the cursor is currently located.
+        Centers the dialog on the specified screen.
         """
-        # Get the current cursor position
-        cursor_pos = QtGui.QCursor.pos()
-        
-        # Find the screen that contains the cursor
-        active_screen = QtWidgets.QApplication.screenAt(cursor_pos)
-        
-        if not active_screen:
-            # Fallback to the primary screen if no screen is found
-            active_screen = QtWidgets.QApplication.primaryScreen()
-        
-        # Get the geometry of the active screen
-        screen_geometry = active_screen.geometry()
+        # Get the geometry of the screen
+        screen_geometry = screen.geometry()
         
         # Get the geometry of the dialog
         dialog_geometry = dialog.frameGeometry()
@@ -75,10 +77,10 @@ class AppController(QtWidgets.QMainWindow):
         # Calculate the center point of the screen
         center_point = screen_geometry.center()
         
-        # Move the dialog's center to the screen's center
+        # Move the center of the dialog to the center of the screen
         dialog_geometry.moveCenter(center_point)
         
-        # Move the dialog to the top-left of the calculated geometry
+        # Apply the new top-left position to the dialog
         dialog.move(dialog_geometry.topLeft())
 
     def set_app_icon(self):
