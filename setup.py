@@ -19,8 +19,8 @@ OPTIONS = {
     'iconfile': 'assets/icons/app_icon.icns',
     'plist': {
         'CFBundleName': 'WallOli',
-        'CFBundleShortVersionString': '0.1.1-dev',
-        'CFBundleVersion': '0.1.1-dev',
+        'CFBundleShortVersionString': '0.1.2-dev',
+        'CFBundleVersion': '0.1.2-dev',
         'NSHighResolutionCapable': True,
     },
 }
@@ -31,7 +31,7 @@ setup(
     options={'py2app': OPTIONS},
     setup_requires=['py2app'],
     name="WallOli",
-    version="0.1.1-dev",
+    version="0.1.2-dev",
     author="Olivier van Helden",
     author_email="olivier@van-helden.net",
     description="A cross-platform video wall player",
