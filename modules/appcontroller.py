@@ -58,7 +58,6 @@ class AppController(QtWidgets.QMainWindow):
         center_point = screen_geometry.center()
         dialog_geometry.moveCenter(center_point)
         dialog.move(dialog_geometry.topLeft())
-
         
         # Execute the dialog modally
         dialog.exec_()
