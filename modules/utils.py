@@ -3,6 +3,12 @@
 # All code comments, user outputs and debugs must be in English. Do not remove this line.
 # Some commands are commented out for further development. Do not remove them.
 
+__all__ = [
+    'log',
+    'error',
+    'exit_with_error',
+]
+
 import sys
 import os
 import subprocess
@@ -16,7 +22,7 @@ import _config as config
 # Get the logger for the module
 logger = logging.getLogger(__name__)
 
-def setup_logging(app, log_level=logging.WARNING):
+def setup_logging(log_level=logging.WARNING):
     """
     Configure logging for the application.
 
@@ -27,9 +33,23 @@ def setup_logging(app, log_level=logging.WARNING):
     Returns:
         None
     """
-    app_name = app.applicationName()
-    if config.log_level:
-        log_level = config.log_level
+    app_name = config.app_name
+    if not app_name:
+        app_name = os.path.basename(sys.argv[0])
+
+    args = config.args
+
+    # Define logging level -- this should move into utils.setup_logging function
+    if args.quiet:
+        log_level = logging.CRITICAL
+    elif args.verbose >= 2:
+        log_level = logging.DEBUG
+    elif args.verbose == 1:
+        log_level = logging.INFO
+    else:
+        log_level = logging.WARNING
+
+    config.log_level = log_level
 
     logging.basicConfig(
         level=log_level,

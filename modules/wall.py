@@ -5,8 +5,9 @@ import random
 from PyQt5 import QtWidgets, QtCore, QtGui
 
 import _config as config
+import modules.utils as utils   # all functions accessible with utils.function()
+from modules.utils import *     # main functions accessible as function() for ease of use, e.g. log(), error(), exit_with_error()
 from modules.videoplayer import VideoPlayer
-from modules.utils import log
 
 class Wall:
     """

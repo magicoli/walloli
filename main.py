@@ -9,11 +9,12 @@ import argparse
 from PyQt5 import QtWidgets, QtGui
 
 import _config as config
+import modules.utils as utils   # all functions accessible with utils.function()
+from modules.utils import *     # main functions accessible as function() for ease of use, e.g. log(), error(), exit_with_error()
 from modules.appcontroller import AppController
 from modules.settings import Settings, SettingsDialog
 from modules.wall import Wall, WallWindow
 from modules.slots import get_screens, get_slots
-from modules.utils import log, error, exit_with_error, prevent_sleep, valid_volume, find_videos, validate_os, validate_vlc_lib, setup_logging, logging
 from modules.videoplayer import VideoPlayer
 
 def main():
@@ -35,15 +36,16 @@ def main():
     """
 
     # Check os and die if not supported
-    validate_os()
-    validate_vlc_lib()
+    utils.validate_os()
+    utils.validate_vlc_lib()
 
     # Prevent computer from going to sleep
-    prevent_sleep()
+    utils.prevent_sleep()
 
     # Initialize the QApplication before creating any widgets
     app = QtWidgets.QApplication(sys.argv)
-    app.setApplicationName("WallOli")
+    config.app_name = "WallOli"
+    app.setApplicationName("config.app_name")
     app.setWindowIcon(QtGui.QIcon('assets/icons/app_icon.icns'))
 
     app_controller = AppController()
@@ -56,7 +58,7 @@ def main():
     parser.add_argument('-b', '--bestfit', action='store_true', help='Try to fit the best number of players on the screens')
     parser.add_argument('-d', '--days', type=int, help='Number of days to look back for videos')
     parser.add_argument('-p', '--panscan', type=float, default=0, help='Panscan value')
-    parser.add_argument('-V', '--volume', type=valid_volume, default=config.volume, help='Volume level (0-100)')
+    parser.add_argument('-V', '--volume', type=utils.valid_volume, default=config.volume, help='Volume level (0-100)')
     parser.add_argument('-v', '--verbose', action='count', default=0, help='Verbose mode (can be used multiple times)')
     # parser.add_argument('-m', '--monitor', action='store_true', help='Monitor changes in the directories and refresh video list (not implemented)')
     parser.add_argument('-l', '--singleloop', action='store_true', help='Single loop mode (partially implemented)')
@@ -82,21 +84,15 @@ def main():
 
     if os.getenv('DEBUG') == 'true':
         # Surcharger si la variable d'environnement DEBUG est définie
-        config.verbose = 2 if config.verbose < 1 else config.verbose
+        config.verbose = 2
         args.quiet = False # overrides quiet mode
 
-    # Define logging level -- this should move into utils.setup_logging function
-    if args.quiet:
-        config.log_level = logging.CRITICAL
-    elif args.verbose >= 2:
-        config.log_level = logging.DEBUG
-    elif args.verbose == 1:
-        config.log_level = logging.INFO
-    else:
-        config.log_level = logging.WARNING
-    setup_logging(app)
+    # Store procesed command-line arguments in config for reference
+    config.args = args
+ 
+    utils.setup_logging()
 
-    # Keep test portion for debugging
+    # # Keep test portion for debugging
     # log("message with log()")
     # error("message with error(message)")
     # error("message with error(message, error_code=1)", error_code=1)
@@ -108,7 +104,7 @@ def main():
     # Process directories and find videos
     video_paths = []
     for directory in args.directories:
-        video_paths.extend(find_videos(directory, args.days))
+        video_paths.extend(utils.find_videos(directory, args.days))
 
     if not video_paths:
         print("No videos found")

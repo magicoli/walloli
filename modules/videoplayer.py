@@ -6,9 +6,11 @@ from itertools import cycle
 from PyQt5 import QtWidgets, QtCore, QtGui
 from PyQt5.QtCore import pyqtSignal, QTimer
 import vlc
+import logging
 
 import _config as config
-from modules.utils import log
+import modules.utils as utils   # all functions accessible with utils.function()
+from modules.utils import *     # main functions accessible as function() for ease of use, e.g. log(), error(), exit_with_error()
 
 class VideoPlayer(QtWidgets.QFrame):
     """
@@ -54,9 +56,9 @@ class VideoPlayer(QtWidgets.QFrame):
         self.video_widget.setGeometry(0, 0, width, height)
         self.video_widget.setStyleSheet("background-color: black;")
 
-        # Prepare VLC arguments based on verbose mode and panscan
+        # VLC is very chatty, show output only in DEBUG mode
         vlc_args = []
-        if not config.verbose:
+        if config.log_level > logging.DEBUG:
             vlc_args.append('--quiet')  # Suppress VLC messages
 
         try:

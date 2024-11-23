@@ -4,10 +4,11 @@
 # Some commands are commented out for further development. Do not remove them.
 
 from PyQt5 import QtWidgets, QtCore, QtGui
-from modules.utils import log
 import os
 
 import _config as config
+import modules.utils as utils   # all functions accessible with utils.function()
+from modules.utils import *     # main functions accessible as function() for ease of use, e.g. log(), error(), exit_with_error()
 
 class SettingsDialog(QtWidgets.QDialog):
     """

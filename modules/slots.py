@@ -9,7 +9,8 @@ import subprocess
 from math import ceil, sqrt
 
 import _config as config
-from modules.utils import log
+import modules.utils as utils   # all functions accessible with utils.function()
+from modules.utils import *     # main functions accessible as function() for ease of use, e.g. log(), error(), exit_with_error()
 
 def get_screens(screen_number=None):
     """
