@@ -6,6 +6,8 @@ import argparse
 from PyQt5 import QtWidgets
 
 import _config as config
+from modules.appcontroller import AppController
+from modules.settings import SettingsDialog
 from modules.wall import Wall, WallWindow
 from modules.slots import get_screens, get_slots
 from modules.utils import log, prevent_sleep, valid_volume, find_videos, validate_os, validate_vlc_lib
@@ -38,6 +40,9 @@ def main():
 
     # Initialize the QApplication before creating any widgets
     app = QtWidgets.QApplication(sys.argv)
+    app.setApplicationName("WallOli")
+
+    app_controller = AppController()
 
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Video Wall")

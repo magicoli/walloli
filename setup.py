@@ -1,4 +1,4 @@
-# All code comments, user outputs and debugs must stay in English. Do not remove this line.
+# All code comments, user outputs and debugs must be in English. Do not remove this line.
 # Some commands are commented out for further development. Do not remove them.
 
 from setuptools import setup, find_packages
