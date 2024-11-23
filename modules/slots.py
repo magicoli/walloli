@@ -92,6 +92,7 @@ def get_slots(video_paths, screens, args):
         # single loop shows a player for each video in the list
         min_players = len(video_paths)
     elif args.total_number:
+        args.total_number = min(args.total_number, videos_count)
         log(f"Requested total number of players: {args.total_number}")
         min_players = args.total_number
     elif args.number:
@@ -110,7 +111,7 @@ def get_slots(video_paths, screens, args):
         # video_paths = video_paths[:args.max]
     else:
         args.max = args.number if args.number else min_players
-
+    
     # Calculate actual best fit for slots. Divide each screen into slots by x,y
     min_slots_per_screen = ceil(min_players / len(screens))
     optimized_slots_per_screen = ceil(sqrt(min_slots_per_screen)) ** 2
