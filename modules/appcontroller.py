@@ -40,24 +40,18 @@ class AppController(QtWidgets.QMainWindow):
         """
         active_window = QtWidgets.QApplication.activeWindow()
         
-        # if active_window:
-        #     # Get the screen of the active window
-        #     active_screen = active_window.screen()
-        # else:
-        #     # Fallback to the primary screen if no active window is found
-        #     active_screen = QtWidgets.QApplication.primaryScreen()
-        active_screen = QtWidgets.QApplication.primaryScreen()
+        if active_window:
+            # Get the screen of the active window
+            active_screen = active_window.screen()
+        else:
+            # Fallback to the primary screen if no active window is found
+            active_screen = QtWidgets.QApplication.primaryScreen()
         
         # Create the SettingsDialog with the active window as parent
         dialog = SettingsDialog(active_window)
-        
-        # Set the dialog modality to Application Modal
         dialog.setWindowModality(Qt.ApplicationModal)
+        dialog.setWindowFlags(dialog.windowFlags() | Qt.WindowStaysOnTopHint)
         
-        # Optional: Ensure the dialog stays on top
-        # dialog.setWindowFlags(dialog.windowFlags() | Qt.WindowStaysOnTopHint)
-        
-        # Center the dialog on the active screen
         self.center_dialog_on_screen(dialog, active_screen)
         
         # Execute the dialog modally
