@@ -128,25 +128,7 @@ def prevent_sleep():
     if config.is_mac:
         # macOS : use 'caffeinate' in the background and make sure it exits when the script ends
         log("Prevent sleep on macOS with 'caffeinate'")
-        config.caffeinate_process = subprocess.Popen(['caffeinate', '-d'])
-        def terminate_caffeinate():
-            """
-            Terminate the 'caffeinate' process if it is running.
-            """
-            if hasattr(config, 'caffeinate_process') and config.caffeinate_process:
-                log("Terminating 'caffeinate' process")
-                config.caffeinate_process.terminate()
-                config.caffeinate_process = None
-        atexit.register(terminate_caffeinate)
-
-        # def run_caffeinate():
-        #     subprocess.call(['caffeinate', '-dimsu'])
-        # threading.Thread(target=run_caffeinate, daemon=True).start()
-        # subprocess.Popen(['caffeinate', '-d'])
-        # def run_caffeinate():
-        #     subprocess.call(['caffeinate', '-dimsu'])
-        # threading.Thread(target=run_caffeinate, daemon=True).start()
-
+        subprocess.Popen(['caffeinate', '-dimsu', '-w', str(os.getpid())])
     elif config.is_windows:
         # Windows : utiliser SetThreadExecutionState
         log("Prevent sleep on Windows with SetThreadExecutionState")
@@ -172,9 +154,6 @@ def prevent_sleep():
             except Exception as e:
                 log(f"Error running systemd-inhibit: {e}")
         threading.Thread(target=inhibit_sleep, daemon=True).start()
-    else:
-        log("Prevent sleep Error: Unsupported platform")
-        exit(1)
 
 def validate_vlc_lib():
     """
