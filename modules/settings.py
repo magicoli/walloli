@@ -75,19 +75,6 @@ class SettingsDialog(QtWidgets.QDialog):
 
         self.setLayout(layout)
 
-    def open_settings_dialog(self):
-        """
-        Open the settings dialog.
-        """
-        log("Opening settings dialog")
-        dialog = SettingsDialog()
-        dialog.settings_changed.connect(self.apply_settings)
-        if dialog.exec_() == QtWidgets.QDialog.Accepted:
-            log("Settings dialog accepted")
-            self.apply_settings()
-        else:
-            log("Settings dialog cancelled")
-
     def browse_directories(self):
         directories = QtWidgets.QFileDialog.getExistingDirectory(self, "Sélectionner les répertoires de vidéos", os.path.expanduser("~"), QtWidgets.QFileDialog.ShowDirsOnly | QtWidgets.QFileDialog.DontResolveSymlinks)
         if directories:
