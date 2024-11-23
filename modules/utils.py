@@ -37,14 +37,12 @@ def setup_logging(log_level=logging.WARNING):
     if not app_name:
         app_name = os.path.basename(sys.argv[0])
 
-    args = config.args
-
     # Define logging level -- this should move into utils.setup_logging function
-    if args.quiet:
+    if config.quiet:
         log_level = logging.CRITICAL
-    elif args.verbose >= 2:
+    elif config.verbose >= 2:
         log_level = logging.DEBUG
-    elif args.verbose == 1:
+    elif config.verbose == 1:
         log_level = logging.INFO
     else:
         log_level = logging.WARNING

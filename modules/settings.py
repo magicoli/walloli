@@ -5,6 +5,7 @@
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 import os
+import argparse
 
 import _config as config
 import modules.utils as utils   # all functions accessible with utils.function()
@@ -144,23 +145,49 @@ class SettingsDialog(QtWidgets.QDialog):
         log("Paramètres enregistrés.")
         super(SettingsDialog, self).accept()
 
-class Settings():
+class Settings:
+    required_fields = ['directories', 'videos_per_screen', 'videos_total', 'selected_screen', 'panscan', 'volume', 'verbose', 'quiet', 'singleloop', 'max', 'days']
+
     def __init__(self):
         self.settings = QtCore.QSettings('Magiiic', 'WallOli')
+        self.define_arguments()
+        self.args = self.parser.parse_args()
+        self.ensure_config_fields()
+        self.map_arguments_to_config()
+        # self.read_settings()
 
-    def read_settings(self):
+    def define_arguments(self):
+        self.parser = argparse.ArgumentParser(description="Video Wall")
+        self.parser.add_argument('-s', '--screen', type=int, help='Screen number')
+        self.parser.add_argument('-n', '--number', type=int, default=1, help='Number of players per screen')
+        self.parser.add_argument('-N', '--total-number', type=int, default=None, help='Total number of players, overrides -n')
+        self.parser.add_argument('-b', '--bestfit', action='store_true', help='Try to fit the best number of players on the screens')
+        self.parser.add_argument('-d', '--days', type=int, help='Number of days to look back for videos')
+        self.parser.add_argument('-p', '--panscan', type=float, default=0, help='Panscan value')
+        self.parser.add_argument('-V', '--volume', type=utils.valid_volume, default=config.volume, help='Volume level (0-100)')
+        self.parser.add_argument('-v', '--verbose', action='count', default=0, help='Verbose mode (can be used multiple times)')
+        self.parser.add_argument('-l', '--singleloop', action='store_true', help='Single loop mode (partially implemented)')
+        self.parser.add_argument('-m', '--max', type=int, help='Maximum number of videos in single-loop mode (partially implemented)')
+        self.parser.add_argument('-q', '--quiet', action='store_true', help='Quiet mode (suppresses all log outputs except CRITICAL)')
+        self.parser.add_argument('directories', nargs='*', help='Directories to search for videos')
+
+    def ensure_config_fields(self):
         """
-        Load config array default values, add saved settings and override with command-line arguments
+        Assure que toutes les configurations requises existent dans config.
         """
-        config.directories = self.settings.value('directories', config.directories)
-        config.videos_per_screen = int(self.settings.value('videos_per_screen', config.videos_per_screen))
-        config.videos_total = int(self.settings.value('videos_total', config.videos_total))
-        config.selected_screen = self.settings.value('selected_screen', config.selected_screen)
-        config.panscan = self.settings.value('panscan', config.panscan, type=bool)
-        config.volume = int(self.settings.value('volume', config.volume))
-        
-    def get_directories(self):
+        for field in self.required_fields:
+            if not hasattr(config, field):
+                setattr(config, field, None)
+
+    def map_arguments_to_config(self):
         """
-        Example method to read a single setting
+        Transférer les arguments de la ligne de commande dans config.
         """
-        return self.settings.value('directories', config.directories)
+        for arg_key, arg_value in vars(self.args).items():
+            if arg_value is not None:
+                setattr(config, arg_key, arg_value)
+
+        # Vérifier la variable d'environnement DEBUG
+        if os.getenv('DEBUG') == 'true':
+            config.verbose = 2
+            config.quiet = False  # Override quiet mode

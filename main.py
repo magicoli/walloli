@@ -5,7 +5,6 @@
 
 import sys
 import os
-import argparse
 from PyQt5 import QtWidgets, QtGui
 
 import _config as config
@@ -35,7 +34,7 @@ def main():
         None
     """
 
-    # Check os and die if not supported
+    # Check OS and die if not supported
     utils.validate_os()
     utils.validate_vlc_lib()
 
@@ -45,81 +44,35 @@ def main():
     # Initialize the QApplication before creating any widgets
     app = QtWidgets.QApplication(sys.argv)
     config.app_name = "WallOli"
-    app.setApplicationName("config.app_name")
+    app.setApplicationName(config.app_name)  # Correction : utiliser config.app_name sans guillemets
     app.setWindowIcon(QtGui.QIcon('assets/icons/app_icon.icns'))
 
     app_controller = AppController()
 
-    # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="Video Wall")
-    parser.add_argument('-s', '--screen', type=int, help='Screen number')
-    parser.add_argument('-n', '--number', type=int, default=1, help='Number of players per screen')
-    parser.add_argument('-N', '--total-number', type=int, default=None, help='Total number of players, overrides -n')
-    parser.add_argument('-b', '--bestfit', action='store_true', help='Try to fit the best number of players on the screens')
-    parser.add_argument('-d', '--days', type=int, help='Number of days to look back for videos')
-    parser.add_argument('-p', '--panscan', type=float, default=0, help='Panscan value')
-    parser.add_argument('-V', '--volume', type=utils.valid_volume, default=config.volume, help='Volume level (0-100)')
-    parser.add_argument('-v', '--verbose', action='count', default=0, help='Verbose mode (can be used multiple times)')
-    # parser.add_argument('-m', '--monitor', action='store_true', help='Monitor changes in the directories and refresh video list (not implemented)')
-    parser.add_argument('-l', '--singleloop', action='store_true', help='Single loop mode (partially implemented)')
-    parser.add_argument('-m', '--max', type=int, help='Maximum number of videos in single-loop mode (partially implemented)')
-    # parser.add_argument('-k', '--kill', action='store_true', help='Kill other video players (not implemented)')
-    parser.add_argument('-q', '--quiet', action='store_true', help='Quiet mode (not implemented)')
-    parser.add_argument('directories', nargs='+', help='Directories to search for videos')
+    # Initialiser les paramètres en utilisant la classe Settings
+    settings = Settings()
 
-    args = parser.parse_args()
-
-    # Define list of arguments to map to config variables
-    config_args_mapping = {
-        'verbose': 'verbose',
-        'volume': 'volume',
-        'panscan': 'panscan',
-    }
-
-    # Map command-line arguments to config variables
-    for arg_key, config_key in config_args_mapping.items():
-        arg_value = getattr(args, arg_key, None)
-        if arg_value is not None:
-            setattr(config, config_key, arg_value)
-
-    if os.getenv('DEBUG') == 'true':
-        # Surcharger si la variable d'environnement DEBUG est définie
-        config.verbose = 2
-        args.quiet = False # overrides quiet mode
-
-    # Store procesed command-line arguments in config for reference
-    config.args = args
- 
+    # Appeler setup_logging
     utils.setup_logging()
 
-    # # Keep test portion for debugging
-    # log("message with log()")
-    # error("message with error(message)")
-    # error("message with error(message, error_code=1)", error_code=1)
-    # error("message with error(message, 1)", 1)
-    # exit_with_error("message with exit_with_error()")
-    # exit_with_error("message with exit_with_error()", 14)
-    # exit(0) # DEBUG
-
     # Process directories and find videos
+    if not config.directories:
+        exit_with_error("No directories specified")
     video_paths = []
-    for directory in args.directories:
-        video_paths.extend(utils.find_videos(directory, args.days))
+    for directory in settings.args.directories:
+        video_paths.extend(utils.find_videos(directory, settings.args.days))
 
     if not video_paths:
         print("No videos found")
         return
 
-    screens = get_screens(args.screen)
+    screens = get_screens(settings.args.screen)
     log("Screens: " + str(screens))
 
-    slots = get_slots(video_paths, screens, args)
+    slots = get_slots(video_paths, screens, settings.args)
     log("slots: " + str(slots))
 
-    # windows = create_windows_and_players(screens, slots, video_paths, volume=args.volume)
-    # log("Windows: " + str(windows))
-
-    wall = Wall(screens, slots, video_paths, volume=args.volume)
+    wall = Wall(screens, slots, video_paths, volume=settings.args.volume)
     log("Wall: " + str(wall))
     
     # Lancer la boucle principale de PyQt
