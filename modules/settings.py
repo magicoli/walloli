@@ -7,6 +7,8 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 from modules.utils import log
 import os
 
+import _config as config
+
 class SettingsDialog(QtWidgets.QDialog):
     """
     Application settings dialog box for the application.
@@ -17,7 +19,7 @@ class SettingsDialog(QtWidgets.QDialog):
         self.setWindowTitle("Paramètres")
         self.setModal(True)
         self.resize(400, 300)
-        self.settings = QtCore.QSettings('VotreEntreprise', 'VideoWallApp')  # Remplacez par votre organisation et nom d'application
+        self.settings = QtCore.QSettings('Magiiic', 'WallOli')
 
         self.init_ui()
         self.load_settings()
@@ -141,3 +143,23 @@ class SettingsDialog(QtWidgets.QDialog):
         log("Paramètres enregistrés.")
         super(SettingsDialog, self).accept()
 
+class Settings():
+    def __init__(self):
+        self.settings = QtCore.QSettings('Magiiic', 'WallOli')
+
+    def read_settings(self):
+        """
+        Load config array default values, add saved settings and override with command-line arguments
+        """
+        config.directories = self.settings.value('directories', config.directories)
+        config.videos_per_screen = int(self.settings.value('videos_per_screen', config.videos_per_screen))
+        config.videos_total = int(self.settings.value('videos_total', config.videos_total))
+        config.selected_screen = self.settings.value('selected_screen', config.selected_screen)
+        config.panscan = self.settings.value('panscan', config.panscan, type=bool)
+        config.volume = int(self.settings.value('volume', config.volume))
+        
+    def get_directories(self):
+        """
+        Example method to read a single setting
+        """
+        return self.settings.value('directories', config.directories)

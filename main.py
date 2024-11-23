@@ -7,7 +7,7 @@ from PyQt5 import QtWidgets, QtGui
 
 import _config as config
 from modules.appcontroller import AppController
-from modules.settings import SettingsDialog
+from modules.settings import Settings, SettingsDialog
 from modules.wall import Wall, WallWindow
 from modules.slots import get_screens, get_slots
 from modules.utils import log, prevent_sleep, valid_volume, find_videos, validate_os, validate_vlc_lib

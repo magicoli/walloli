@@ -3,8 +3,6 @@
 # All code comments, user outputs and debugs must be in English. Do not remove this line.
 # Some commands are commented out for further development. Do not remove them.
 
-import sys
-import os
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt  # Ensure Qt is imported
 
@@ -35,7 +33,7 @@ class AppController(QtWidgets.QMainWindow):
 
     def open_settings_dialog(self):
         """
-        Opens the settings dialog on the screen where the active window is located.
+        Centers the dialog on the application's main screen, on top of any other application windows.
         """
         active_window = QtWidgets.QApplication.activeWindow()
         
