@@ -7,7 +7,7 @@ from PyQt5 import QtWidgets, QtCore, QtGui
 import os
 import argparse
 
-import _config as config
+import modules.config as config
 import modules.utils as utils   # all functions accessible with utils.function()
 from modules.utils import *     # main functions accessible as function() for ease of use, e.g. log(), error(), exit_with_error()
 
@@ -151,7 +151,6 @@ class Settings:
     def __init__(self):
         self.settings = QtCore.QSettings('Magiiic', 'WallOli')
         self.define_arguments()
-        self.args = self.parser.parse_args()
         self.ensure_config_fields()
         self.map_arguments_to_config()
         # self.read_settings()
@@ -170,6 +169,7 @@ class Settings:
         self.parser.add_argument('-m', '--max', type=int, help='Maximum number of videos in single-loop mode (partially implemented)')
         self.parser.add_argument('-q', '--quiet', action='store_true', help='Quiet mode (suppresses all log outputs except CRITICAL)')
         self.parser.add_argument('directories', nargs='*', help='Directories to search for videos')
+        self.args = self.parser.parse_args()
 
     def ensure_config_fields(self):
         """

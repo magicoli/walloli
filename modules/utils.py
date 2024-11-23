@@ -17,7 +17,7 @@ import argparse
 import threading
 import logging
 
-import _config as config
+import modules.config as config
 
 # Get the logger for the module
 logger = logging.getLogger(__name__)
@@ -40,10 +40,11 @@ def setup_logging(log_level=logging.WARNING):
     # Define logging level -- this should move into utils.setup_logging function
     if config.quiet:
         log_level = logging.CRITICAL
-    elif config.verbose >= 2:
-        log_level = logging.DEBUG
-    elif config.verbose == 1:
-        log_level = logging.INFO
+    elif config.verbose:
+        if config.verbose >= 2:
+            log_level = logging.DEBUG
+        else:
+            log_level = logging.INFO
     else:
         log_level = logging.WARNING
 
@@ -137,9 +138,7 @@ def validate_os():
         config.platform = 'Linux'
         config.is_linux = True
     else:
-        # Exit if platform is not supported
-        print(f"Your platform {sys.platform} is not supported or could not be detected.")
-        sys.exit(1)
+        exit_with_error(f"Your platform {sys.platform} is not supported or could not be detected.")
 
 def valid_volume(value):
     """
@@ -187,8 +186,7 @@ def find_videos(directory, days=None):
     try:
         result = subprocess.run(command, capture_output=True, text=True, check=True)
     except subprocess.CalledProcessError as e:
-        log(f"Error running find command: {e}")
-        sys.exit(1)
+        exit_with_error(f"Error running find command: {e}")
 
     # log("Command output: " + result.stdout)
 
@@ -284,6 +282,4 @@ def validate_vlc_lib():
             config.vlc_lib_path = path
             return
 
-    log("VLC n'est pas installé ou libvlccore n'a pas été trouvé.")
-    log("Veuillez installer VLC depuis https://www.videolan.org/vlc/download-macosx.html")
-    sys.exit(1)
+    exit_with_error("VLC is not installed or libvlccore was not found. Please install VLC from https://www.videolan.org/vlc/download-macosx.html")

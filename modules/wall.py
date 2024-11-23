@@ -4,7 +4,7 @@ import sys
 import random
 from PyQt5 import QtWidgets, QtCore, QtGui
 
-import _config as config
+import modules.config as config
 import modules.utils as utils   # all functions accessible with utils.function()
 from modules.utils import *     # main functions accessible as function() for ease of use, e.g. log(), error(), exit_with_error()
 from modules.videoplayer import VideoPlayer
@@ -14,7 +14,7 @@ class Wall:
     A class to manage the video wall by creating and managing multiple WallWindow instances.
     """
 
-    def __init__(self, screens, slots, video_paths, volume=config.volume):
+    def __init__(self, screens, slots, video_paths):
         """
         Initialize the Wall with the necessary parameters.
 
@@ -22,12 +22,10 @@ class Wall:
             screens (list of tuples): List of screen resolutions and positions. Each tuple contains (resolution, x, y).
             slots (list of tuples): List of slots with position and size for each player. Each tuple contains (screen_index, slot_x, slot_y, slot_width, slot_height).
             video_paths (list of str): List of video paths to play.
-            volume (int, optional): The volume level for the players. Defaults to 40.
         """
         self.screens = screens
         self.slots = slots
         self.video_paths = video_paths
-        self.volume = volume
         self.windows = []
 
         self.create_windows_and_players()
@@ -53,7 +51,7 @@ class Wall:
         for screen_index, screen in enumerate(self.screens):
             # Create a window for each screen
             window = WallWindow()
-            window.setWindowTitle("Videowall")  # Set the window title
+            window.setWindowTitle(config.app_name)  # Set the window title
             res, x, y = screen
             try:
                 width, height = map(int, res.split('x'))
@@ -86,7 +84,7 @@ class Wall:
                 # Build and configure the player
                 log(f"Adding player {slot_index} on screen {screen_index} slot at ({relative_x}, {relative_y}) {slot_width}x{slot_height} with color {color.name()}")
                 try:
-                    player = VideoPlayer(playlist, window, slot_width, slot_height, color, volume=self.volume)
+                    player = VideoPlayer(playlist, window, slot_width, slot_height, color)
                     player.setGeometry(relative_x, relative_y, slot_width, slot_height)
                     player.show()
                 except Exception as e:

@@ -8,7 +8,7 @@ import re
 import subprocess
 from math import ceil, sqrt
 
-import _config as config
+import modules.config as config
 import modules.utils as utils   # all functions accessible with utils.function()
 from modules.utils import *     # main functions accessible as function() for ease of use, e.g. log(), error(), exit_with_error()
 
@@ -26,12 +26,10 @@ def get_screens(screen_number=None):
         SystemExit: If the provided screen_number is invalid.
     """
     screens = []
+
     if config.is_mac:
         # macOS
 
-        # if not shutil.which('displayplacer'):
-        #     log("Error: 'displayplacer' is not installed on this system.")
-        #     exit(1)
         result = subprocess.run(['displayplacer', 'list'], capture_output=True, text=True)
         for line in result.stdout.splitlines():
             if 'Resolution:' in line:
@@ -41,10 +39,6 @@ def get_screens(screen_number=None):
                 x, y = origin.split(',')
                 screens.append((res, int(x), int(y)))
     elif config.is_linux:
-        # Linux
-        # if not shutil.which('xrandr'):
-        #     log("Erreur: 'xrandr' n'est pas installé sur ce système.")
-        #     exit(1)
         result = subprocess.run(['xrandr', '--query'], capture_output=True, text=True)
         for line in result.stdout.splitlines():
             if ' connected' in line:
@@ -65,19 +59,17 @@ def get_screens(screen_number=None):
         if 1 <= screen_number <= len(screens):
             screens = [screens[screen_number - 1]]
         else:
-            log(f"Invalid screen number: {screen_number}")
-            exit(1)  # Exit with error if the screen number is invalid
+            exit_with_error(f"Invalid screen number: {screen_number}")
 
     return screens
 
-def get_slots(video_paths, screens, args):
+def get_slots(video_paths, screens):
     """
     Calculate the slots needed based on the number of screens and videos.
     
     Args:
         video_paths (list of str): A list of video paths to play.
         screens (list of tuples): A list of screen resolutions and positions.
-        args (argparse.Namespace): The command-line arguments.
     
     Returns:
         list of tuples: A list of slots where each slot is represented as (screen_index, slot_x, slot_y, slot_width, slot_height).
@@ -88,37 +80,37 @@ def get_slots(video_paths, screens, args):
 
     videos_count = len(video_paths)
 
-    if args.singleloop:
-        log(f"Single loop: {args.singleloop}")
+    if config.singleloop:
+        log(f"Single loop: {config.singleloop}")
         # single loop shows a player for each video in the list
         min_players = len(video_paths)
-    elif args.total_number:
-        args.total_number = min(args.total_number, videos_count)
-        log(f"Requested total number of players: {args.total_number}")
-        min_players = args.total_number
-    elif args.number:
-        log(f"Requested videos per screen: {args.number}")
-        min_players = min(len(screens) * args.number, videos_count)
+    elif config.total_number:
+        config.total_number = min(config.total_number, videos_count)
+        log(f"Requested total number of players: {config.total_number}")
+        min_players = config.total_number
+    elif config.number:
+        log(f"Requested videos per screen: {config.number}")
+        min_players = min(len(screens) * config.number, videos_count)
     else:
         min_players = len(screens)  # one player per screen by default
 
     min_players = min(min_players, videos_count)
 
-    if args.max:
-        # set total players to minimum value between args.max, args.number and len(video_paths)
-        min_players = min(args.max, args.number if args.number else min_players, len(video_paths))
+    if config.max:
+        # set total players to minimum value between config.max, config.number and len(video_paths)
+        min_players = min(config.max, config.number if config.number else min_players, len(video_paths))
 
         # TODO: shuffle if needed, then truncate the list
-        # video_paths = video_paths[:args.max]
+        # video_paths = video_paths[:config.max]
     else:
-        args.max = args.number if args.number else min_players
+        config.max = config.number if config.number else min_players
     
     # Calculate actual best fit for slots. Divide each screen into slots by x,y
     min_slots_per_screen = ceil(min_players / len(screens))
     optimized_slots_per_screen = ceil(sqrt(min_slots_per_screen)) ** 2
 
     best_fit = None
-    if args.bestfit:
+    if config.bestfit:
         min_diff = float('inf')
         for rows in range(1, min_slots_per_screen + 1):
             cols = ceil(min_slots_per_screen / rows)
@@ -142,9 +134,9 @@ def get_slots(video_paths, screens, args):
     screen_index = 0
 
     empty_slots = 0
-    if args.total_number is not None:
-        empty_slots = max(total_slots - args.total_number, 0)
-        log(f"Total number of players requested: {args.total_number}, empty slots: {empty_slots}")
+    if config.total_number is not None:
+        empty_slots = max(total_slots - config.total_number, 0)
+        log(f"Total number of players requested: {config.total_number}, empty slots: {empty_slots}")
     else:
         log(f"No total number of players requested, empty slots: {empty_slots}")
         empty_slots = max(total_slots - min_players, 0)
@@ -161,10 +153,10 @@ def get_slots(video_paths, screens, args):
         log(f"  Slots dimensions: {slot_default_width}x{slot_default_height}")
 
         # Calculer les empty_slots pour cet écran
-        if args.total_number:
+        if config.total_number:
             empty_slots_screen = empty_slots
-        elif args.number:  # if number is set, manage per screen to distribute evenly
-            empty_slots_screen = slots_per_screen - min(args.number, videos_count)
+        elif config.number:  # if number is set, manage per screen to distribute evenly
+            empty_slots_screen = slots_per_screen - min(config.number, videos_count)
         else:
             empty_slots_screen = 0  # Par défaut 0 slot vide
 

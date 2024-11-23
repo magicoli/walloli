@@ -7,7 +7,7 @@ import sys
 import os
 from PyQt5 import QtWidgets, QtGui
 
-import _config as config
+import modules.config as config
 import modules.utils as utils   # all functions accessible with utils.function()
 from modules.utils import *     # main functions accessible as function() for ease of use, e.g. log(), error(), exit_with_error()
 from modules.appcontroller import AppController
@@ -33,6 +33,10 @@ def main():
     Returns:
         None
     """
+    # Initialiser les paramètres en utilisant la classe Settings
+    # settings = Settings()
+    config.setup_config()
+    config.app_name = "WallOli"
 
     # Check OS and die if not supported
     utils.validate_os()
@@ -43,14 +47,11 @@ def main():
 
     # Initialize the QApplication before creating any widgets
     app = QtWidgets.QApplication(sys.argv)
-    config.app_name = "WallOli"
     app.setApplicationName(config.app_name)  # Correction : utiliser config.app_name sans guillemets
     app.setWindowIcon(QtGui.QIcon('assets/icons/app_icon.icns'))
 
     app_controller = AppController()
 
-    # Initialiser les paramètres en utilisant la classe Settings
-    settings = Settings()
 
     # Appeler setup_logging
     utils.setup_logging()
@@ -58,21 +59,24 @@ def main():
     # Process directories and find videos
     if not config.directories:
         exit_with_error("No directories specified")
+
     video_paths = []
-    for directory in settings.args.directories:
-        video_paths.extend(utils.find_videos(directory, settings.args.days))
+    for directory in config.directories:
+        video_paths.extend(utils.find_videos(directory, config.days))
 
     if not video_paths:
-        print("No videos found")
+        exit_with_error("No videos found in the specified directories")
         return
 
-    screens = get_screens(settings.args.screen)
+    screens = get_screens(config.screen)
+    if not screens:
+        exit_with_error("No screens found, that's pretty embarrassing")
     log("Screens: " + str(screens))
 
-    slots = get_slots(video_paths, screens, settings.args)
+    slots = get_slots(video_paths, screens)
     log("slots: " + str(slots))
 
-    wall = Wall(screens, slots, video_paths, volume=settings.args.volume)
+    wall = Wall(screens, slots, video_paths)
     log("Wall: " + str(wall))
     
     # Lancer la boucle principale de PyQt

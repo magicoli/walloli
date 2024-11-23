@@ -6,7 +6,7 @@
 from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt  # Ensure Qt is imported
 
-import _config as config
+import modules.config as config
 import modules.utils as utils   # all functions accessible with utils.function()
 from modules.utils import *     # main functions accessible as function() for ease of use, e.g. log(), error(), exit_with_error()
 from modules.settings import SettingsDialog

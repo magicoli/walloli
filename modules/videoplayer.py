@@ -8,7 +8,7 @@ from PyQt5.QtCore import pyqtSignal, QTimer
 import vlc
 import logging
 
-import _config as config
+import modules.config as config
 import modules.utils as utils   # all functions accessible with utils.function()
 from modules.utils import *     # main functions accessible as function() for ease of use, e.g. log(), error(), exit_with_error()
 
@@ -25,7 +25,7 @@ class VideoPlayer(QtWidgets.QFrame):
     # Define a signal for when the video has finished playing
     video_finished = pyqtSignal()
 
-    def __init__(self, playlist, parent=None, width=300, height=200, color=None, volume=40):
+    def __init__(self, playlist, parent=None, width=300, height=200, color=None):
         """
         Initialize the video player with a playlist of video paths.
 
@@ -35,7 +35,6 @@ class VideoPlayer(QtWidgets.QFrame):
             width: The width of the video player.
             height: The height of the video player.
             color: The background color of the video player.
-            volume: The volume level for the video player.
         """
         super(VideoPlayer, self).__init__(parent)
         self.playlist = cycle(playlist)  # Infinite cycle over the playlist
@@ -87,7 +86,7 @@ class VideoPlayer(QtWidgets.QFrame):
         self.video_finished.connect(self.play_next_video)
 
         # Set the volume
-        self.player.audio_set_volume(volume)
+        self.player.audio_set_volume(config.volume)
 
         # Start the first video
         self.play_next_video()
