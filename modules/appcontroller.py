@@ -16,7 +16,6 @@ class AppController(QtWidgets.QMainWindow):
         super().__init__()
         self.setWindowTitle("WallOli")
         self.setup_menu()
-        self.set_app_icon()
 
     def setup_menu(self):
         # Create the menu bar
@@ -62,17 +61,3 @@ class AppController(QtWidgets.QMainWindow):
         # Execute the dialog modally
         dialog.exec_()
         log("Settings dialog opened and closed")
-
-    def set_app_icon(self):
-        """
-        Sets the application icon using a relative path.
-        """
-        # Determine the directory of the current script
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        
-        # Construct the path to the icon
-        icon_path = os.path.join(script_dir, 'assets/icons/app_icon.icns')
-        
-        # Set the window icon
-        self.setWindowIcon(QtGui.QIcon(icon_path))
-        log(f"Application icon set to {icon_path}")
