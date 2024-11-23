@@ -5,7 +5,7 @@
 
 import sys
 import os
-from PyQt5 import QtWidgets, QtGui
+from PyQt5 import QtWidgets
 from PyQt5.QtCore import Qt  # Ensure Qt is imported
 
 from modules.utils import log

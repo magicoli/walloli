@@ -3,7 +3,7 @@
 import sys
 import os
 import argparse
-from PyQt5 import QtWidgets
+from PyQt5 import QtWidgets, QtGui
 
 import _config as config
 from modules.appcontroller import AppController
@@ -41,6 +41,7 @@ def main():
     # Initialize the QApplication before creating any widgets
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName("WallOli")
+    app.setWindowIcon(QtGui.QIcon('assets/icons/app_icon.icns'))
 
     app_controller = AppController()
 
