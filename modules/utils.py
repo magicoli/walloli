@@ -28,6 +28,8 @@ def setup_logging(app, log_level=logging.WARNING):
         None
     """
     app_name = app.applicationName()
+    if config.log_level:
+        log_level = config.log_level
 
     logging.basicConfig(
         level=log_level,
@@ -68,7 +70,7 @@ def log(message, *args):
 
     logger.log(levels[level], message)
 
-def error(message, *args, exit_code=1):
+def error(message, *args, error_code=1):
     """
     Log an error message et quitter le script.
 
@@ -80,10 +82,9 @@ def error(message, *args, exit_code=1):
     Returns:
         None
     """
-    logger.error(f"Error {exit_code}: {message}", *args)
-    sys.exit(exit_code)
+    log("error", message, *args)
 
-def exit_with_error(message, *args, exit_code=1):
+def exit_with_error(message, *args, error_code=1):
     """
     Log une erreur et quitter le script avec un code d'erreur.
 
@@ -95,7 +96,8 @@ def exit_with_error(message, *args, exit_code=1):
     Returns:
         None
     """
-    error(message, *args, exit_code=exit_code)
+    log("critical", message, *args)
+    sys.exit(error_code)
 
 def validate_os():
     """

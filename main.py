@@ -13,7 +13,7 @@ from modules.appcontroller import AppController
 from modules.settings import Settings, SettingsDialog
 from modules.wall import Wall, WallWindow
 from modules.slots import get_screens, get_slots
-from modules.utils import log, prevent_sleep, valid_volume, find_videos, validate_os, validate_vlc_lib, setup_logging, logging
+from modules.utils import log, error, exit_with_error, prevent_sleep, valid_volume, find_videos, validate_os, validate_vlc_lib, setup_logging, logging
 from modules.videoplayer import VideoPlayer
 
 def main():
@@ -85,16 +85,25 @@ def main():
         config.verbose = 2 if config.verbose < 1 else config.verbose
         args.quiet = False # overrides quiet mode
 
-    # Déterminer le niveau de log basé sur le nombre d'occurrences de -v
+    # Define logging level -- this should move into utils.setup_logging function
     if args.quiet:
-        log_level = logging.CRITICAL
+        config.log_level = logging.CRITICAL
     elif args.verbose >= 2:
-        log_level = logging.DEBUG
+        config.log_level = logging.DEBUG
     elif args.verbose == 1:
-        log_level = logging.INFO
+        config.log_level = logging.INFO
     else:
-        log_level = logging.WARNING
-    setup_logging(app, log_level=log_level)
+        config.log_level = logging.WARNING
+    setup_logging(app)
+
+    # Keep test portion for debugging
+    # log("message with log()")
+    # error("message with error(message)")
+    # error("message with error(message, error_code=1)", error_code=1)
+    # error("message with error(message, 1)", 1)
+    # exit_with_error("message with exit_with_error()")
+    # exit_with_error("message with exit_with_error()", 14)
+    # exit(0) # DEBUG
 
     # Process directories and find videos
     video_paths = []
