@@ -1,7 +1,36 @@
+# All code comments, user outputs and debugs must stay in English. Do not remove this line.
+# Some commands are commented out for further development. Do not remove them.
+
 from setuptools import setup, find_packages
 
+APP = ['main.py']
+DATA_FILES = [
+    ('assets/icons', [
+        'assets/icons/tray_icon.png',
+        'assets/icons/tray_icon@2x.png',  # Décommentez si utilisé
+        'assets/icons/app_icon.png',
+    ]),
+    'assets/icons/app_icon.icns',
+]
+OPTIONS = {
+    'argv_emulation': True,
+    'packages': ['PyQt5'],
+    'excludes': ['packaging'], # Build fails without this line
+    'iconfile': 'assets/icons/app_icon.icns',
+    'plist': {
+        'CFBundleName': 'WallOli',
+        'CFBundleShortVersionString': '0.1.1-dev',
+        'CFBundleVersion': '0.1.1-dev',
+        'NSHighResolutionCapable': True,
+    },
+}
+
 setup(
-    name="walloli",
+    app=APP,
+    data_files=DATA_FILES,
+    options={'py2app': OPTIONS},
+    setup_requires=['py2app'],
+    name="WallOli",
     version="0.1.1-dev",
     author="Olivier van Helden",
     author_email="olivier@van-helden.net",
@@ -19,5 +48,6 @@ setup(
     install_requires=[
         "PyQt5",
         "python-vlc",
+        "jaraco.text",
     ],
 )

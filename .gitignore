@@ -5,3 +5,4 @@ disabled/
 test_videos/
 tmp/
 __pycache__/
+build/
