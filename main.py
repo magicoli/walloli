@@ -1,5 +1,8 @@
 # main.py
 
+# All code comments, user outputs and debugs must be in English. Do not remove this line.
+# Some commands are commented out for further development. Do not remove them.
+
 import sys
 import os
 import argparse
@@ -10,7 +13,7 @@ from modules.appcontroller import AppController
 from modules.settings import Settings, SettingsDialog
 from modules.wall import Wall, WallWindow
 from modules.slots import get_screens, get_slots
-from modules.utils import log, prevent_sleep, valid_volume, find_videos, validate_os, validate_vlc_lib
+from modules.utils import log, prevent_sleep, valid_volume, find_videos, validate_os, validate_vlc_lib, setup_logging, logging
 from modules.videoplayer import VideoPlayer
 
 def main():
@@ -54,12 +57,12 @@ def main():
     parser.add_argument('-d', '--days', type=int, help='Number of days to look back for videos')
     parser.add_argument('-p', '--panscan', type=float, default=0, help='Panscan value')
     parser.add_argument('-V', '--volume', type=valid_volume, default=config.volume, help='Volume level (0-100)')
-    parser.add_argument('-v', '--verbose', action='store_true', help='Verbose mode')
+    parser.add_argument('-v', '--verbose', action='count', default=0, help='Verbose mode (can be used multiple times)')
     # parser.add_argument('-m', '--monitor', action='store_true', help='Monitor changes in the directories and refresh video list (not implemented)')
     parser.add_argument('-l', '--singleloop', action='store_true', help='Single loop mode (partially implemented)')
     parser.add_argument('-m', '--max', type=int, help='Maximum number of videos in single-loop mode (partially implemented)')
     # parser.add_argument('-k', '--kill', action='store_true', help='Kill other video players (not implemented)')
-    # parser.add_argument('-q', '--quiet', action='store_true', help='Quiet mode (not implemented)')
+    parser.add_argument('-q', '--quiet', action='store_true', help='Quiet mode (not implemented)')
     parser.add_argument('directories', nargs='+', help='Directories to search for videos')
 
     args = parser.parse_args()
@@ -78,8 +81,20 @@ def main():
             setattr(config, config_key, arg_value)
 
     if os.getenv('DEBUG') == 'true':
-        # Override if DEBUG environment variable is set
-        config.verbose = True
+        # Surcharger si la variable d'environnement DEBUG est définie
+        config.verbose = 2 if config.verbose < 1 else config.verbose
+        args.quiet = False # overrides quiet mode
+
+    # Déterminer le niveau de log basé sur le nombre d'occurrences de -v
+    if args.quiet:
+        log_level = logging.CRITICAL
+    elif args.verbose >= 2:
+        log_level = logging.DEBUG
+    elif args.verbose == 1:
+        log_level = logging.INFO
+    else:
+        log_level = logging.WARNING
+    setup_logging(app, log_level=log_level)
 
     # Process directories and find videos
     video_paths = []

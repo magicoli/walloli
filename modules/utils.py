@@ -1,31 +1,101 @@
 # utils.py - This module contains utility functions for logging, argument validation, and system-specific operations.
 
+# All code comments, user outputs and debugs must be in English. Do not remove this line.
+# Some commands are commented out for further development. Do not remove them.
+
 import sys
 import os
 import subprocess
 import re
 import argparse
 import threading
-import atexit
+import logging
 
 import _config as config
 
-def log(message, *args):
+# Get the logger for the module
+logger = logging.getLogger(__name__)
+
+def setup_logging(app, log_level=logging.WARNING):
     """
-    Log a message to the console with optional arguments.
+    Configure logging for the application.
 
     Args:
-        message: The message to log.
-        *args: Optional arguments to format the message.
+        app (QApplication): The application object.
+        log_level (int): The logging level to set.
 
     Returns:
         None
     """
-    if config.verbose:
-        script_name = os.path.basename(__file__)
+    app_name = app.applicationName()
+
+    logging.basicConfig(
+        level=log_level,
+        format=f'{app_name} [%(levelname)s] %(name)s: %(message)s',
+        handlers=[
+            logging.StreamHandler(sys.stdout),        # Affiche les logs dans la console
+            # logging.FileHandler("app.log")            # Écrit les logs dans un fichier
+        ]
+    )
+
+def log(message, *args):
+    """
+    Log a message with the appropriate log level if specified, otherwise use the 'info' level.
+
+    Args:
+        message (str): message to log. If the message is a key in the levels dictionary, it will be used as the log level.
+        *args: Additional message parts
+
+    Returns:
+        None
+    """
+    levels = {
+        'debug': logging.DEBUG,
+        'info': logging.INFO,
+        'warning': logging.WARNING,
+        'error': logging.ERROR,
+        'critical': logging.CRITICAL
+    }
+    if message in levels:
+        level = message
+        if not args:
+            return # Pas de message à logger
+        message = " ".join(str(arg) for arg in args).rstrip()
+    else:
+        level = 'info'
         if args:
             message += " " + " ".join(str(arg) for arg in args).rstrip()
-        print(f"{script_name}: {message}")
+
+    logger.log(levels[level], message)
+
+def error(message, *args, exit_code=1):
+    """
+    Log an error message et quitter le script.
+
+    Args:
+        message (str): Le message d'erreur à logger.
+        *args: Arguments supplémentaires pour formater le message.
+        exit_code (int): Code de sortie du script.
+
+    Returns:
+        None
+    """
+    logger.error(f"Error {exit_code}: {message}", *args)
+    sys.exit(exit_code)
+
+def exit_with_error(message, *args, exit_code=1):
+    """
+    Log une erreur et quitter le script avec un code d'erreur.
+
+    Args:
+        message (str): Le message d'erreur à logger.
+        *args: Arguments supplémentaires pour formater le message.
+        exit_code (int): Code de sortie du script.
+
+    Returns:
+        None
+    """
+    error(message, *args, exit_code=exit_code)
 
 def validate_os():
     """
