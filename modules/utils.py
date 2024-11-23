@@ -6,6 +6,7 @@ import subprocess
 import re
 import argparse
 import threading
+import atexit
 
 import _config as config
 
@@ -125,12 +126,27 @@ def prevent_sleep():
     """
 
     if config.is_mac:
-        # macOS : use 'caffeinate' in the background
-        # TODO: make sure caffeinate is a standard command on macOS, try to use a standard alternative otherwise
+        # macOS : use 'caffeinate' in the background and make sure it exits when the script ends
         log("Prevent sleep on macOS with 'caffeinate'")
-        def run_caffeinate():
-            subprocess.call(['caffeinate', '-dimsu'])
-        threading.Thread(target=run_caffeinate, daemon=True).start()
+        config.caffeinate_process = subprocess.Popen(['caffeinate', '-d'])
+        def terminate_caffeinate():
+            """
+            Terminate the 'caffeinate' process if it is running.
+            """
+            if hasattr(config, 'caffeinate_process') and config.caffeinate_process:
+                log("Terminating 'caffeinate' process")
+                config.caffeinate_process.terminate()
+                config.caffeinate_process = None
+        atexit.register(terminate_caffeinate)
+
+        # def run_caffeinate():
+        #     subprocess.call(['caffeinate', '-dimsu'])
+        # threading.Thread(target=run_caffeinate, daemon=True).start()
+        # subprocess.Popen(['caffeinate', '-d'])
+        # def run_caffeinate():
+        #     subprocess.call(['caffeinate', '-dimsu'])
+        # threading.Thread(target=run_caffeinate, daemon=True).start()
+
     elif config.is_windows:
         # Windows : utiliser SetThreadExecutionState
         log("Prevent sleep on Windows with SetThreadExecutionState")
